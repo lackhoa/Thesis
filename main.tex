@@ -1,0 +1,201 @@
+\documentclass[12pt]{article}
+\bibliographystyle{alpha}
+
+%packages go here!
+\usepackage{algorithm2e}
+\usepackage{anyfontsize}
+\usepackage{hyperref}
+\usepackage{tikz} %For drawing the cover page's background
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage[a4paper, 
+	right=2cm,
+	left=4.3cm,
+	top=2.25cm, bottom=1.25cm]{geometry}
+\usepackage[document]{ragged2e} %Left alignment
+\usepackage{parskip} %Add an additional line after paragraphs
+\usepackage{fancyhdr} %Put numbering on top
+\usepackage{enumitem} %List handling
+\usepackage{caption} %Caption handling
+\usepackage{layout} %Printing out the layout for debugging
+\usepackage[backend=biber, style=authoryear-icomp]{biblatex} %Bibliography
+\providecommand\phantomsection{}
+
+%Title
+\title{Xamk Report Template}
+
+%bibliography in latex's path:
+\addbibresource{uni.bib}
+
+%Setting the font
+\renewcommand{\rmdefault}{phv} % Arial
+\renewcommand{\sfdefault}{phv} % Arial
+\newcommand{\code}[1]{\texttt{#1}} % Code command
+\newcommand{\eval}{\Rightarrow}
+
+%Enter parameters here
+\newcommand\myauthor{Vo Dang Khoa}
+\newcommand\mytitle{Logic Programming}
+\newcommand{\subtitle}{Server Project Plan}
+\newcommand{\rpas}{Report}
+\newcommand{\course}{Advanced Server Development Project}
+
+%Line spacing is 1.5
+\linespread{1.5}
+
+%Redefining maketitle
+\renewcommand{\maketitle}{
+\thispagestyle{empty}
+
+\begin{center}
+
+\fontsize{16}{19} \selectfont \myauthor
+
+\vspace{20pt}
+
+\MakeUppercase{\fontsize{24}{30} \selectfont \mytitle}
+
+\vspace{5pt}
+
+\fontsize{20}{25} \selectfont \subtitle
+
+\vspace{20pt}
+
+\fontsize{16}{19} \selectfont {\rpas \\ \course}
+
+\vspace{20pt}
+
+\the\year
+
+%Adding the logo
+\vspace{100pt}
+\includegraphics{logo.jpg}
+
+\end{center}
+
+%Making the cover background
+\tikz[remember picture,overlay] \node[inner sep=0pt] at (current page.center){
+\includegraphics[width=\paperwidth,height=\paperheight]{coverbg.png}};
+\clearpage
+}
+
+%Formatting The sections:
+\titleformat{\section}
+{\bfseries}
+{\thesection}
+{.17in}
+{\MakeUppercase}
+
+%The subsection:
+\titleformat{\subsection}
+{\bfseries}
+{\thesubsection}
+{.17in}
+{}
+
+%Formatting the paragraphs
+%Put new line between paragraphs
+\setlength{\parskip}{\baselineskip}
+%No indentation
+\setlength{\parindent}{0pt}
+
+%Content of the document
+\begin{document}
+%The cover page
+%First we must clear up the margin
+\newgeometry{
+	right=2cm,
+	left=2cm,
+	top=4cm,
+	bottom=2cm,
+	}
+{\maketitle}
+
+%Table of content:
+\thispagestyle{empty}
+{\tableofcontents}
+
+\newpage
+
+%The below line was marked with "b"
+%===========================================================================================================
+%CONTENT GOES HERE!
+\section{Introduction}
+We present techniques of utilizing the relational/logical programming language miniKanren embedded in Scheme to solve various logic problems.
+
+\section{Preliminaries}
+To understand this document, you need to master the Scheme programming language.
+The best resource for that would be (\cite{sicp}).
+The solution also relies on the understanding of miniKanren (\cite{byrdphd}),
+a minimalistic relational programming language embedded in Scheme.
+The website (\cite{mkdotorg}) keeps up with the latest implementations of the language.
+
+\subsection{Scheme}
+Here we give a brief introduction to Scheme.
+Scheme is one of the most simple and elegant languages in existence.
+
+\subsubsection{Pairs and lists}
+Before tackling pairs, it is worth noting that this is the only data structure in the language that we shall concern ourselves with.
+A pair is specified by its \textbf{car} and \textbf{cdr}.
+
+From pairs we can make up lists. A list can either be empty, or it is something attached to a list. More concretely, something is a list when it is either: \textbf{null} (written "\code{()}"), or a pair \code{a} and \code{d}, where \code{d} is a list.
+
+The standard way we to write a pair with car \code{a} and cdr \code{d} is \code{(a . d)}.
+However, doing so would be very tedious for lists, so there is a simple rule that if \code{d} is also a pair, we remove the dot and the parentheses surrounding \code{d}.
+For example, a list of all natural numbers from 1 to 3 would be reduced from \code{(1 . (2 . (3 . ()))} to \code{(1 2 . (3 .()))} and finally to just \code{(1 2 3)}.
+
+In the standard context of lists, it is perhaps helpful to think of car as the first element of the list, and cdr as the rest of the list, although such analogy might backfire in other situations.
+
+\subsubsection{The evaluation scheme}
+The evaluation scheme of Lisp is described in more detail in.
+We give a brief interpreter cycle in pseudocode that should describe most of the code used in this papter. \code{eval} is a function which takes the expression \code{exp} along with the environment \code{env} which maps various symbols to values:
+Scheme's (and Lisp's) primitive operators can be categorized as follow: Definition: \code{define} Lexical binding: \code{let}
+
+Scheme's means of combinations are
+Conditionals: \code{if} and \code{cond}
+Sequential evaluation: this feature of Scheme is not clearly seen because it is not assigned a keyword. Fortunately for us, sequential evaluation is only useful when there are side effects in the program, which we never (or rarely) have to rely on in a functional programming paradigm.
+
+\subsection{miniKanren}
+
+\section{Applications}
+
+\section{Conclusion}
+
+%References, this was marked with "r"
+%---------------------------------------------------------------------------------------------------------------
+
+%These two should always go together
+\newpage
+
+\begingroup 
+% NO more line spacing for references
+\linespread{1}
+
+% Set spacing between bibliography spacing
+\setlength\bibitemsep{\baselineskip}
+
+% NO more hanging indentation for bibliograpy
+\setlength{\bibhang}{0pt}
+
+\section*{REFERENCES}
+\phantomsection
+\addcontentsline{toc}{section}{REFERENCES}
+
+\printbibliography[heading=none]
+\endgroup
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
