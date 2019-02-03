@@ -1,0 +1,103 @@
+\section{Preliminaries}
+In this section, we give a brief introduction to Scheme and miniKanren.
+As a quick advice: the Scheme language is a pain to read on paper.
+Readers wishing to understand the code are strongly advised to copy it to a code editor with parentheses highlighting support, such as emacs.
+
+\subsection{A subset of Scheme}
+Here we give a brief introduction a small, functional (as opposed to imperative) subset of Scheme needed for miniKanren. Note that this is not the same as the subset needed for the \emph{implementation} of miniKanren, although such implementation is possible.
+Those who wish to learn more about the complete language or see more examples can go to (\cite{tspl4}) and (\cite{sicp}).
+
+\subsubsection{Symbols}
+\textbf{Symbol} is the simplest data type in the language. For example, \code{a}, \code{b}, \code{xyz} are all representations of symbols.
+A symbol is like an atomic idea, it has meaning only when compared with other symbols. That is, the only thing we can say about \code{x} and \code{xy} is that they are different from each other. The fact that \code{x} is the prefix of \code{xy} is never recognized by the language.
+
+As you might have guessed, we can hardly do anything useful with symbols, since individual symbols can neither be taken apart, nor can two symbols ever be concatenated to create a new one. To represent structures, we need \textbf{pairs}.
+
+\subsubsection{Pairs and lists}
+In Lisp, \textbf{pair} is the most basic structure from which all other tree structure can be derived.
+For that reason, this is the only data structure mentioned in this paper.
+A pair is specified by two parts: its \textbf{car} (the left element) and \textbf{cdr} (the right element).
+
+From pairs we can make up lists. A list can either be \textbf{null} \textbf{empty} (written as "\code{()}") or a pair of a thing \code{a} and another list \code{d}.
+
+We have not shown how to write a pair, because the way Lisp handles pairs is slightly confusing. The mathematically correct way to write a pair with car \code{a} and cdr \code{d} is simply \code{(a . d)} (or sometimes \code{[a . d]}).
+However, doing so would be very tedious for bigger trees, so there is a simple rule that if \code{d} is also a pair, we can remove the dot and the parentheses surrounding \code{d}. More concretely, \code{(a . (b . d))} $\rightarrow$ \code{(a b . d)}.
+For example, a list of all natural numbers from 1 to 3 can be reduced from \code{(1 . (2 . (3 . ()))} to \code{(1 2 . (3 . ()))} and finally to just \code{(1 2 3)}. In fact, it is possible to visually recognized a list as "something surrounded by parentheses/brackets and has no dot". Explanation to why this is true is left as an exercise.
+
+In the context of lists, it is sometimes helpful to think of car as the first element of the list, and cdr as the rest of the list, although such analogy might backfire in certain situations.
+
+\subsubsection{The evaluator}
+Equipped with just these two data types, we are now ready to learn how Scheme can be interpreted. \textcite{lisp} gives the mathematical description of Lisp; a meta-circular evaluator is also given in (\cite{lisp-man}).
+Listing \ref{evaluator} is the source code of a Scheme interpreter -- only for our specific usage -- written in a pseudo programming language. This meta-language is comparable to Python, but with additional features like "magical" pattern matching, Lisp-style list, and tail recursion. Note that we enclose literal symbols in quotation marks (") to distinguish them from identifiers of the meta-language.
+
+Although incomplete, the evaluator should describe most programs used in this paper. Two functions are most critical -- \code{eval} and \code{apply} -- which perpetually call each other until \code{eval} hits a base case and returns the output expression (or the program just loops forever). \code{eval} takes the input expression \code{exp}, along with the environment \code{env} which maps identifiers to their values, and returns the interpreted value. The behavior of \code{apply} will be given below.
+
+\input{code/meta-eval}
+Below is a comprehensive list of every type of expression encountered by \code{eval} and its corresponding action:
+\begin{itemize}
+\item Symbol: look for its value in the environment and return the result.
+\item Lambda: return a closure with the content specified by the lambda.
+\item Quotation ('): return the expression being quoted.
+\item Quasi-quotation (`): return the expression being quasi-quoted, except for those sub-expressions preceded with a comma (,). This interpretation is slightly incorrect since the real language allows nested quasi-quotation. However, such nesting only becomes useful when writing macros and thus will not bother us.
+\item Define: out of all cases, \code{define} is the only one that does not return a value; we say that it is only evaluated for side-effect. For we seek to write code in a functional manner,  \code{define} is only used to create functions and constants which have global meaning, never to mutate local variables. 
+\item Application: this is the standard case, \code{apply} just calls \code{eval} after it extending \code{procedure}'s environment by mapping its formal parameters to \code{args}. Note that the new evaluation is done in the extended environment of \code{procedure} and not the original call to \code{eval}; giving the language lexical scope instead of dynamic scope.
+\end{itemize}
+
+From here on out, we write "\code{e1} $\Rightarrow$ \code{e2}" to mean that the result of calling \code{eval(e1, global-env)} is \code{e2}. Again, \code{global-env} is purely a dictionary for functions defined throughout the paper.
+
+On an interesting note, to interpret pure lambda calculus (the subset needed for Turing-completeness), one only has to remove all but the first, second and last case of \code{eval}.
+
+For readers that have never seen a Lisp's meta-circular evaluator: the above code would look almost identical had it been written in Scheme instead. It certainly would be a better choice to explain Scheme using itself, but then that would not be an explanation anymore.
+
+With the language subset specified, we have covered the groundwork necessary to introduce miniKanren.
+\subsection{miniKanren}
+Due to time constraints, we will not cover miniKanren in as much detail as we did with Scheme.
+\textcite{byrdphd} gives an excellent dissertation on the implementation details and applications of the language.
+For a more focused and concise treatment, (\cite{micro}) is the best candidate.
+Additionally, the website (\cite{mkdotorg}) keeps up with the latest implementations of the language and other related resources.
+
+For someone new to the language, the most important thing to recognize is that miniKanren is not a separate programming language but a structure inside of a language (in our case, Scheme). Components of the structure include:
+\begin{itemize}
+\item \textbf{Logic variables}: these are analogous to variables in other languages. However, logic variables can be free or bound and still have useful meaning. Two free variables can also be bound to each other or declared to obey various constraints.
+\item \textbf{Streams} (\cite{sicp}): although we do not have to worry about streams in our daily miniKanren usage, knowing what a stream is helps us know what is going on when the program diverges (loops forever). Streams are simply lazy lists which will yield values only when we ask for them. Because of this laziness, we can represent an infinite number of computational branches without using unlimited computational resources.
+\item \textbf{States} (also \textbf{packages}): these most importantly contain variable's substitutions, similar to the Scheme environments we talked about earlier. As with the case of logic variables, states could also declare two variables to be the same, different, or bind variables to ground Scheme values.
+\item \textbf{Goal}: a goal is a function (a normal Scheme function) that maps a state to a stream of state. If we adhere to the "language", goals can only be created by \textbf{goal constructors}, as will be described in the following sections.
+\item \textbf{Relation}: relations are simply Scheme functions that return goals.
+\item \textbf{Program}: a miniKanren program consists a goal wrapped inside of a \code{run} form which, with the help of zero or more relation definitions, outputs list of \textit{state representations}. We talk about \code{run} in the immediate following section.
+\end{itemize}
+
+Table \ref{tab1} draws some parallel between these concepts and those of traditional imperative languages.
+
+\begin{table}
+\caption{miniKanren concepts compared to imperative languages}
+\label{tab1}
+\begin{tabular}{ | c | c | c | }
+\hline
+ & miniKanren & Imperative \\ 
+\hline
+State & Logical constraints & Machine state \\  
+State-changing action & Goal & Statement \\
+Action abstraction & Relation & Procedure \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{The interface: \code{run}}
+We cannot continue further without mentioning \code{run}, since it is the only tool we have to make sense of miniKanren's results. To do this, \code{run} catches the stream produced by the goal and turns it into a list of specified length. In the process, it also converts the packages inside into a more readable format -- a process called \textbf{reification} -- which also highlights the values of the \textit{query variables}. We will not describe precisely what the format produced by reification is, but it should be intuitively grasped as we introduce more examples. Meanwhile, just know that \code{run} has the following syntax:
+\begin{lstlisting}
+(run <answer-count> (<query-var-1> <query-var-2> ...) <goal>)
+\end{lstlisting}
+\subsubsection{Goal constructor: $\equiv$}
+Simply put, $\equiv$ unifies (makes the same) two terms. More precisely, $\equiv$ receives a package and returns a stream. This stream can either contain one package where the two terms become their most general unifier (mgu), or be empty when they cannot be unified.
+
+The concept of unification has its roots in predicate logic. The terms of predicate logic can be represented in Scheme by the following rules:
+\begin{itemize}
+\item Variables are directly represented by the same symbols.
+\item For function expressions of the kind $f(t_1,...,t_n)$, we move $f$ to the inside of the parentheses; and recursively translate each argument $t_i$ to \code{g-i}, resulting in the expression \code{(f g-1,...,g-n)}.
+\end{itemize}
+
+Again, we do not need more than pairs and symbols to write everything we need. This simpler representation has two important advantages. First, we can omit arguments, writing terms like \code{(f x . y)} and later unify it with \code{(f 1 2 3)} to get \code{x = 1} and \code{y = (2 3)}. Second, users don't need to wonder about when to use predicates and when to use pairs/lists, for example in Prolog\ref{pred-pair}. \footnote{\label{pred-pair}Usage of predicates will improve performance, however, when the number of arguments are known. The reason is that predicates are smaller in size, and their arguments may be indexed like arrays.}
+
+\subsubsection{Goal constructor: \code{fresh}}
+\subsubsection{Goal constructor: \code{conj}}
+\subsubsection{Goal constructor: \code{conde}}

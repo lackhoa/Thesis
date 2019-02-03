@@ -1,0 +1,45 @@
+\lstset{language=pseudo, showstringspaces=false,  breaklines=true}
+\begin{lstlisting}[caption=An incomplete Scheme evaluator, label=evaluator]
+global-env = ()
+function lookup(iden, env):
+  match env with
+  (): error("Unbound identifier")
+  (a . d):
+    match a with
+      (iden v): return v
+      else: return lookup(iden, d)
+
+function extend(params, args, env):
+  match params with
+    (): return env  
+    (x pd):
+    match args with
+      (v ad): return ((x v) . extend(pd, ad, env))
+
+function eval-quasi(exp, env):
+  if symbol?(exp) or null?(exp): return exp
+  else:
+    match exp with:
+      ,e: return eval(e, env)
+      (a . d): return (eval-quasi(a, env) . eval-quasi(d, env))
+
+function eval(exp, env):
+  if symbol?(exp): return lookup(exp, env)
+  else:
+    match exp with
+      ("lambda" params body): return ("closure" params body en  v)
+      'e: return e
+      `e: return eval-quasi(e, env)
+      (define x e):
+        v <- eval(e, env)
+        global-env <- extend((x), (v), global-env)
+      (operator . operands):
+        return apply(eval(operator, env), (eval(rand, env) for rand in operands))
+
+function apply(procedure, args):
+  match procedure with:        
+    (closure params body env):
+      return eval(body, extend(params, args, env))
+    else: error("Application of non-function")
+\end{lstlisting}
+\lstset{language=Scheme, showstringspaces=false, breaklines=true}

@@ -2,40 +2,45 @@
 \bibliographystyle{alpha}
 
 %packages go here!
-\usepackage{algorithm2e}
+\include{langs}
+\usepackage{setspace}
+\usepackage{datetime}
+\usepackage{array}
+\usepackage{color}
+\definecolor{lightgray}{rgb}{.9,.9,.9}
+\definecolor{darkgray}{rgb}{.4,.4,.4}
+\definecolor{purple}{rgb}{0.65, 0.12, 0.82}
 \usepackage{anyfontsize}
 \usepackage{hyperref}
-\usepackage{tikz} %For drawing the cover page's background
+\usepackage{tikz}
 \usepackage{graphicx}
 \usepackage{titlesec}
 \usepackage[a4paper, 
 	right=2cm,
 	left=4.3cm,
 	top=2.25cm, bottom=1.25cm]{geometry}
-\usepackage[document]{ragged2e} %Left alignment
-\usepackage{parskip} %Add an additional line after paragraphs
-\usepackage{fancyhdr} %Put numbering on top
-\usepackage{enumitem} %List handling
-\usepackage{caption} %Caption handling
-\usepackage{layout} %Printing out the layout for debugging
-\usepackage[backend=biber, style=authoryear-icomp]{biblatex} %Bibliography
+\usepackage[document]{ragged2e}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{caption}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\usepackage{layout}
+\usepackage[backend=biber, style=authoryear-icomp]{biblatex}
 \providecommand\phantomsection{}
 
-%Title
-\title{Xamk Report Template}
+\title{Thesis}
 
-%bibliography in latex's path:
 \addbibresource{uni.bib}
 
 %Setting the font
 \renewcommand{\rmdefault}{phv} % Arial
 \renewcommand{\sfdefault}{phv} % Arial
 \newcommand{\code}[1]{\texttt{#1}} % Code command
-\newcommand{\eval}{\Rightarrow}
 
 %Enter parameters here
-\newcommand\myauthor{Vo Dang Khoa}
-\newcommand\mytitle{Logic Programming}
+\newcommand{\myauthor}{Vo Dang Khoa}
+\newcommand{\mytitle}{Logic Programming in miniKanren}
 \newcommand{\subtitle}{Server Project Plan}
 \newcommand{\rpas}{Report}
 \newcommand{\course}{Advanced Server Development Project}
@@ -69,13 +74,13 @@
 
 %Adding the logo
 \vspace{100pt}
-\includegraphics{logo.jpg}
+\includegraphics{figures/logo.jpg}
 
 \end{center}
 
 %Making the cover background
 \tikz[remember picture,overlay] \node[inner sep=0pt] at (current page.center){
-\includegraphics[width=\paperwidth,height=\paperheight]{coverbg.png}};
+\includegraphics[width=\paperwidth,height=\paperheight]{figures/coverbg.png}};
 \clearpage
 }
 
@@ -111,6 +116,8 @@
 	}
 {\maketitle}
 
+\include{abstract}
+
 %Table of content:
 \thispagestyle{empty}
 {\tableofcontents}
@@ -120,46 +127,12 @@
 %The below line was marked with "b"
 %===========================================================================================================
 %CONTENT GOES HERE!
-\section{Introduction}
-We present techniques of utilizing the relational/logical programming language miniKanren embedded in Scheme to solve various logic problems.
+\include{intro}
+\include{prelim}
 
-\section{Preliminaries}
-To understand this document, you need to master the Scheme programming language.
-The best resource for that would be (\cite{sicp}).
-The solution also relies on the understanding of miniKanren (\cite{byrdphd}),
-a minimalistic relational programming language embedded in Scheme.
-The website (\cite{mkdotorg}) keeps up with the latest implementations of the language.
+%\section{Applications}
 
-\subsection{Scheme}
-Here we give a brief introduction to Scheme.
-Scheme is one of the most simple and elegant languages in existence.
-
-\subsubsection{Pairs and lists}
-Before tackling pairs, it is worth noting that this is the only data structure in the language that we shall concern ourselves with.
-A pair is specified by its \textbf{car} and \textbf{cdr}.
-
-From pairs we can make up lists. A list can either be empty, or it is something attached to a list. More concretely, something is a list when it is either: \textbf{null} (written "\code{()}"), or a pair \code{a} and \code{d}, where \code{d} is a list.
-
-The standard way we to write a pair with car \code{a} and cdr \code{d} is \code{(a . d)}.
-However, doing so would be very tedious for lists, so there is a simple rule that if \code{d} is also a pair, we remove the dot and the parentheses surrounding \code{d}.
-For example, a list of all natural numbers from 1 to 3 would be reduced from \code{(1 . (2 . (3 . ()))} to \code{(1 2 . (3 .()))} and finally to just \code{(1 2 3)}.
-
-In the standard context of lists, it is perhaps helpful to think of car as the first element of the list, and cdr as the rest of the list, although such analogy might backfire in other situations.
-
-\subsubsection{The evaluation scheme}
-The evaluation scheme of Lisp is described in more detail in.
-We give a brief interpreter cycle in pseudocode that should describe most of the code used in this papter. \code{eval} is a function which takes the expression \code{exp} along with the environment \code{env} which maps various symbols to values:
-Scheme's (and Lisp's) primitive operators can be categorized as follow: Definition: \code{define} Lexical binding: \code{let}
-
-Scheme's means of combinations are
-Conditionals: \code{if} and \code{cond}
-Sequential evaluation: this feature of Scheme is not clearly seen because it is not assigned a keyword. Fortunately for us, sequential evaluation is only useful when there are side effects in the program, which we never (or rarely) have to rely on in a functional programming paradigm.
-
-\subsection{miniKanren}
-
-\section{Applications}
-
-\section{Conclusion}
+%\section{Conclusion}
 
 %References, this was marked with "r"
 %---------------------------------------------------------------------------------------------------------------
