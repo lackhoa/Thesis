@@ -87,8 +87,10 @@ We cannot continue further without mentioning \code{run}, since it is the only t
 \begin{lstlisting}
 (run <answer-count> (<query-var-1> <query-var-2> ...) <goal>)
 \end{lstlisting}
-\subsubsection{Goal constructor: $\equiv$}
-Simply put, $\equiv$ unifies (makes the same) two terms. More precisely, $\equiv$ receives a package and returns a stream. This stream can either contain one package where the two terms become their most general unifier (mgu), or be empty when they cannot be unified.
+\subsubsection{Goal constructor: \code{==}}
+Simply put, \code{==} unifies (makes the same) two terms, and declarively it means "these two shall be equal". More precisely, \code{==} receives a package and returns a stream. This stream can either contain one state where the two terms become their most general unifier (mgu), or be empty when they cannot be unified.
+
+Actually, \code{==} is the only \textit{constraint} in the what is called the "core" of miniKanren. The reason is that even with only this constraint, the language is already Turing-complete. However, the reader should not be deluded into thinking that \code{==} is the only constraint they will ever need. At minimum, we should be able to declare things to be different, as well.
 
 The concept of unification has its roots in predicate logic. The terms of predicate logic can be represented in Scheme by the following rules:
 \begin{itemize}
@@ -96,7 +98,7 @@ The concept of unification has its roots in predicate logic. The terms of predic
 \item For function expressions of the kind $f(t_1,...,t_n)$, we move $f$ to the inside of the parentheses; and recursively translate each argument $t_i$ to \code{g-i}, resulting in the expression \code{(f g-1,...,g-n)}.
 \end{itemize}
 
-Again, we do not need more than pairs and symbols to write everything we need. This simpler representation has two important advantages. First, we can omit arguments, writing terms like \code{(f x . y)} and later unify it with \code{(f 1 2 3)} to get \code{x = 1} and \code{y = (2 3)}. Second, users don't need to wonder about when to use predicates and when to use pairs/lists, for example in Prolog\ref{pred-pair}. \footnote{\label{pred-pair}Usage of predicates will improve performance, however, when the number of arguments are known. The reason is that predicates are smaller in size, and their arguments may be indexed like arrays.}
+Again, we do not need more than pairs and symbols to write everything we need. This simpler representation has two important advantages. First, we can omit arguments, writing terms like \code{(f x . y)} and later unify it with \code{(f 1 2 3)} to get \code{x = 1} and \code{y = (2 3)}. Second, users don't need to wonder about when to use predicates and when to use pairs/lists, for example in Prolog\footnote{Usage of predicates are more efficient, however, especially when the number of arguments are known. The reason is that predicates are smaller in size, and their arguments may be indexed like arrays.}.
 
 \subsubsection{Goal constructor: \code{fresh}}
 \subsubsection{Goal constructor: \code{conj}}
