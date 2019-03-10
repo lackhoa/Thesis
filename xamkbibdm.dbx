@@ -1,0 +1,15 @@
+\DeclareDatamodelFields[type=field, datatype=literal]{doctype}
+
+\DeclareDatamodelFields[type=field, datatype=datepart]{
+    lastmodyear,
+    lastmodmonth,
+    lastmodday,
+    lastmodhour,
+    lastmodminute,
+    lastmodsecond,
+    lastmodtimezone,
+    lastmodseason,
+}
+\DeclareDatamodelFields[type=field, datatype=date, skipout]{lastmoddate}
+
+\DeclareDatamodelEntryfields{doctype, lastmoddate}

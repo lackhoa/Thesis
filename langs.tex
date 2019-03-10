@@ -15,16 +15,8 @@
   morestring=[b]"
 }
 \lstdefinelanguage{Scheme}{
-  morekeywords=[1]{define, define-syntax, define-macro, lambda, define-stream, stream-lambda},
-  morekeywords=[2]{run, fresh, conde,
-    begin, call-with-current-continuation, call/cc,
-    call-with-input-file, call-with-output-file, case, cond,
-    do, else, for-each, if,
-    let*, let, let-syntax, letrec, letrec-syntax,
-    let-values, let*-values,
-    and, or, not, delay, force,
-    quasiquote, quote, unquote, unquote-splicing,
-    map, fold, syntax, syntax-rules, eval, environment,  },
+  morekeywords=[1]{define, define-syntax,  lambda},
+  morekeywords=[2]{run, run*, fresh, conde, ==, =/=, begin, case, cond, do, else, for-each, if, let*, let, let-syntax, letrec, letrec-syntax, let-values, let*-values, and, or, not, delay, force, quasiquote, quote, unquote, unquote-splicing, map, fold, syntax, syntax-rules, eval, environment,},
   morekeywords=[3]{import, export},
   alsodigit=!\$\%&*+-./:<=>?@^_~,
   sensitive=true,
@@ -38,5 +30,5 @@
   upquote=true,
   breaklines=true,
   breakatwhitespace=true,
-  literate=*{`}{{`}}{1}
+  literate=*{`}{{`}}{1} {'}{{'}}{1}
 }

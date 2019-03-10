@@ -1,8 +1,12 @@
-\documentclass[12pt]{article}
-\bibliographystyle{alpha}
+\newif\ifthesis
+\thesistrue
 
-%packages go here!
+\documentclass[12pt]{article}
+\bibliographystyle{apalike}
+
 \include{langs}
+%packages!
+\usepackage{comment}
 \usepackage{fancyhdr}
 \usepackage{setspace}
 \usepackage{datetime}
@@ -25,10 +29,65 @@
 \DeclareCaptionFormat{myformat}{\footnotesize\selectfont#1#2#3}
 \captionsetup{justification=raggedright, singlelinecheck=false, format=myformat}
 \usepackage{layout}
-\usepackage[backend=biber, style=authoryear-icomp]{biblatex}
-\providecommand\phantomsection{}
+\RequirePackage{csquotes}
+\RequirePackage{xpatch}
+\RequirePackage[
+    datamodel=xamkbibdm,
+    backend=biber,
+    bibstyle=authoryear,
+    citestyle=authoryear,
+    citestyle=numeric,
+    dashed=false,
+    uniquename=init,
+    giveninits=true,
+    labeldate=long,
+    urldate=long,
+    dateabbrev=false,
+    defernumbers=true
+    ]{biblatex}
+\setlength\bibitemsep{0.5\baselineskip}
+\setlength\bibhang{0pt}
 
-\title{Thesis}
+\NewBibliographyString{wwwdoc, lastmodstr, urlpre}
+% This doesn't work
+\DefineBibliographyStrings{UKenglish}{
+    nodate = {No date},
+    urlseen = {Accessed},
+    wwwdoc = {WWW document},
+    lastmodstr = {Updated},
+    urlpre = {Available at}
+}
+
+% Biblatex bibliography format modifications
+\DeclareNameAlias{sortname}{family-given}
+\renewcommand*\finalnamedelim{\addspace\&\addspace}
+\DeclareFieldFormat{titlecase}{\MakeSentenceCase{#1}}
+\DeclareFieldFormat{editortype}{\mkbibparens{#1}\nopunct}
+\xpatchbibmacro{bbx:editor}{\addcomma\space}{\space}{}{}
+\DeclareLabeldate{
+    \field{date}\field{year}\field{eventdate}\field{origdate}\literal{nodate}}
+\xpatchbibmacro{date+extrayear}
+    {\printtext[parens]}
+    {\setunit*{\addperiod\addspace}\printtext}{}{}
+\xpatchbibmacro{date+extradate}
+    {\printtext[parens]}
+    {\setunit*{\addperiod\addspace}\printtext}{}{}
+\DeclareFieldFormat{lastmoddate}{Updated #1}
+\DeclareFieldFormat{url}{Available at: \url{#1}}
+\DeclareFieldFormat{pages}{#1}
+\DeclareFieldFormat{urldate}{\mkbibbrackets{Accessed #1}}
+\DeclareFieldFormat{title}{#1}
+\DeclareFieldFormat[article]{title}{#1}
+\xpretobibmacro{url+urldate}{
+    \iffieldundef{doctype}%
+        {\iffieldundef{url}{}{WWW document. }}
+        {\printfield{doctype}\setunit*{\addperiod\addspace}}
+    \iffieldundef{lastmodyear}
+        {}%
+        {\printlastmoddate\setunit*{\addperiod\addspace}}%
+}{}{}
+
+\providecommand\phantomsection{}
 
 \addbibresource{uni.bib}
 
@@ -39,11 +98,11 @@
 
 %Enter parameters here
 \newcommand{\myauthor}{Khoa Vo}
-\newcommand{\mytitle}{Relational Programming in miniKanren}
-\newcommand{\subtitle}{Strengths, weaknesses, and applications}
-\newcommand{\rpas}{Bachelor's thesis}
+\newcommand{\mytitle}{\ifthesis Writing negation in miniKanren \else Firewall analysis assistant in miniKanren \fi}
+\newcommand{\subtitle}{}
+\newcommand{\rpas}{\ifthesis Bachelor's thesis \else Report \fi}
 \newcommand{\degree}{Degree programme in Information Technology}
-\newcommand{\course}{}
+\newcommand{\course}{\ifthesis \else Advanced Sever Development Project \fi}
 
 %Line spacing is 1.5
 \linespread{1.5}
@@ -64,8 +123,11 @@
 
 \vspace{20pt}
 
-%\fontsize{16}{19} \selectfont {\rpas \\ \course}
+\ifthesis
 \fontsize{16}{19} \selectfont {\rpas \\ \degree}
+\else
+\fontsize{16}{19} \selectfont {\rpas \\ \course}
+\fi
 
 \vspace{20pt}
 
@@ -110,7 +172,10 @@
 {\maketitle}
 
 %Abstract & Table of content:
-\include{abstract}
+\ifthesis
+\input{abstract}
+\else
+\fi
 \newgeometry{right=2cm, left=2cm, top=2cm, bottom=2cm}
 \thispagestyle{empty}
 {\tableofcontents}
@@ -127,8 +192,9 @@
 %The below line was marked with "b"
 %===========================================================================================================
 %CONTENT GOES HERE!
-\include{intro}
-\include{prelim}
+\input{intro}
+\input{prelim}
+\input{ccs}
 
 %\section{Applications}
 

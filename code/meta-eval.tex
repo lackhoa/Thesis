@@ -27,7 +27,8 @@ function eval(exp, env):
   if symbol?(exp): return lookup(exp, env)
   else:
     match exp with
-      ("lambda" params body): return ("closure" params body en  v)
+      ("lambda" params body):
+        return ("closure" params body en  v)
       'e: return e
       `e: return eval-quasi(e, env)
       (define x e):
@@ -42,4 +43,3 @@ function apply(procedure, args):
       return eval(body, extend(params, args, env))
     else: error("Application of non-function")
 \end{lstlisting}
-\lstset{language=Scheme, showstringspaces=false, breaklines=true}
