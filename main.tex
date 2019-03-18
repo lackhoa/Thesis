@@ -1,5 +1,5 @@
-\newif\ifthesis
-\thesistrue
+\newif\ifthesis \thesistrue
+\newif\ifpublish \publishfalse
 
 \documentclass[12pt]{article}
 \bibliographystyle{apalike}
@@ -7,7 +7,6 @@
 \include{langs}
 %packages!
 \usepackage{comment}
-\usepackage{fancyhdr}
 \usepackage{setspace}
 \usepackage{datetime}
 \usepackage{array}
@@ -36,36 +35,28 @@
     backend=biber,
     bibstyle=authoryear,
     citestyle=authoryear,
-    citestyle=numeric,
     dashed=false,
     uniquename=init,
     giveninits=true,
     labeldate=long,
     urldate=long,
     dateabbrev=false,
-    defernumbers=true
+    defernumbers=true,
+    maxnames=2,
+    maxbibnames=99,
     ]{biblatex}
 \setlength\bibitemsep{0.5\baselineskip}
 \setlength\bibhang{0pt}
 
-\NewBibliographyString{wwwdoc, lastmodstr, urlpre}
-% This doesn't work
-\DefineBibliographyStrings{UKenglish}{
-    nodate = {No date},
-    urlseen = {Accessed},
-    wwwdoc = {WWW document},
-    lastmodstr = {Updated},
-    urlpre = {Available at}
-}
-
 % Biblatex bibliography format modifications
+\renewbibmacro{in:}{} % Beware of titles with "In:"
 \DeclareNameAlias{sortname}{family-given}
 \renewcommand*\finalnamedelim{\addspace\&\addspace}
-\DeclareFieldFormat{titlecase}{\MakeSentenceCase{#1}}
+\DeclareFieldFormat{titlecase}{#1}
 \DeclareFieldFormat{editortype}{\mkbibparens{#1}\nopunct}
 \xpatchbibmacro{bbx:editor}{\addcomma\space}{\space}{}{}
 \DeclareLabeldate{
-    \field{date}\field{year}\field{eventdate}\field{origdate}\literal{nodate}}
+    \field{date}\field{year}\field{eventdate}\field{origdate}\literal{No date}}
 \xpatchbibmacro{date+extrayear}
     {\printtext[parens]}
     {\setunit*{\addperiod\addspace}\printtext}{}{}
@@ -192,9 +183,17 @@
 %The below line was marked with "b"
 %===========================================================================================================
 %CONTENT GOES HERE!
-\input{intro}
-\input{prelim}
-\input{ccs}
+\lstset{language=Scheme, showstringspaces=false,  breaklines=true}
+
+\ifpublish
+    \input{intro}
+    \input{prelim}
+    \ifthesis \input{staticKanren} \else \input{firewall} \fi
+    \input{ccs}
+\else
+    \ifthesis \input{staticKanren} \else \input{firewall} \fi
+\fi
+
 
 %\section{Applications}
 

@@ -1,0 +1,37 @@
+\section{staticKanren}
+This section introduces staticKanren, a language designed to analyze miniKanren programs. We will first step through some simple use cases in comparison to miniKanren so as to develop intuition for the more detailed implementation part. The last part demonstrates applications of the language.
+
+\subsection{Introductory examples}
+On the surface, staticKanren was designed to look as close to miniKanren as possible; however there are still some fundamental differences. Unlike miniKanren, we cannot model infinite answer streams with staticKanren. In fact, staticKanren programs can only return all answers using \code{run*} as there is no point keeping the other answers secrets. As a result, we cannot write recursive relations in staticKanren as is. On the bright side, this gives the language's implementation a conceptual clarity over miniKanren.
+
+staticKanren offers only three primitives constraints: equality, disequality and \textbf{lazy} constraint. The first two retain their syntax and semantics from miniKanren, whereas the last is a new addition to emulate recursive relations in staticKanren. There is no reason to not include more constraints. The more knowledge staticKanren has, the better it is at its job. However, adding other constraints would be a distraction from our goal. We only demonstrate disequality in this paper as it plays such an important role in most miniKanren's programs.
+
+This variant of the language also preserves all variable names created throughout the program. For example (from now until the end of the paper, the $\Rightarrow$ symbol is reserved for staticKanren programs unless stated otherwise):
+
+\begin{lstlisting}
+(run* (q p) (== q 4))
+\end{lstlisting}
+$\Rightarrow$ \code{(((4 \#(p 0)) () ()))}
+
+If the program above were run under miniKanren instead, the answer would have been \code{((4 \_.0))}. As advertised, the variable \code{p} remains unknown so it gets to keep its name (let us ignore the zero on the right for now). Besides the query variables, staticKanren always returns two additional constraint stores, one for disequalities and one for fake constraints. Hence, every answer has the same shape of a three-element list.  The next example demonstrates how the language deals with name shadowing:
+
+\begin{lstlisting}
+(run* (q a) (fresh (a d) (== q `(,a . ,d))))
+\end{lstlisting}
+$\Rightarrow$ \code{((((\#(a 1) . \#(d 1)) \#(a 0)) () ()))}
+
+The same program under miniKanren would return \code{(((\_.0 . \_.1) \_.2))} instead. There are two variables in the answer having the same name \code{a}. In the first answer, these two variables are still distinguished by their \textbf{scopes} (i.e. the number on the right). Meanwhile, the second answer sidesteps this problem completely by introducing a new name for every unbound variables used in the answer. It is perhaps a subjective matter to debate whether the new representation is better, but there is one at least one theoretical problem avoided by the new approach\footnote{This example was even mentioned in one of the miniKanren's Uncourse Hangouts organized by William Byrd.}:
+
+\begin{lstlisting}
+(run* (q p) (== q '\_.0))
+\end{lstlisting}
+$\Rightarrow$ \code{(((\_.0 \#(p 0)) () ()))}
+
+The same program under miniKanren would return \code{((\_.0 \_.0))}!. And because two Scheme symbols are the same iff they look the same, there is no way to distinguish \code{p} and \code{q} in that case, even from the computer's perspective. This is not a fundamental flaw as there are still simple ways to distinguish reified names from Scheme symbols.
+
+This last example demonstrates fake constraints. There is 
+
+\subsection{Implementation}
+(run* (q p r) (fake `(mother ,q ,p)) (fake `(father ,p ,r))))
+
+\subsection{Applications}
