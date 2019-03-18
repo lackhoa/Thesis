@@ -21,7 +21,7 @@ If the program above were run under miniKanren instead, the answer would have be
 \end{lstlisting}
 $\Rightarrow$ \code{((((#(a 1) . #(d 1)) #(a 0)) () ()))}
 
-The same program under miniKanren would return \code{(((_.0 . _.1) _.2))} instead. There are two variables in the answer having the same name \code{a}. In the first answer, these two variables are still distinguished by their \textbf{scopes} (i.e. the number on the right). Meanwhile, the second answer sidesteps this problem completely by introducing a new name for every unbound variables used in the answer. It is perhaps a subjective matter to debate whether the new representation is better, but there is one at least one theoretical problem avoided by the new approach\footnote{This example was even mentioned in one of the miniKanren's Uncourse Hangouts organized by William Byrd.}:
+The same program under miniKanren would return \code{(((_.0 . _.1) _.2))} instead. There are two variables in the answer having the same name \code{a}. In the first answer, these two variables are still distinguished by their \textbf{birthdate} (i.e. the number on the right). Meanwhile, the second answer sidesteps this problem completely by introducing a new name for every unbound variables used in the answer. It is perhaps a subjective matter to debate whether the new representation is better, but there is one at least one theoretical problem avoided by the new approach\footnote{This example was even mentioned in one of the miniKanren's Uncourse Hangouts organized by William Byrd.}:
 
 \begin{lstlisting}
 (run* (q p) (== q '_.0))
@@ -42,8 +42,123 @@ $\Rightarrow$
  ((father #(p 0) #(r 0)) (mother #(q 0) #(p 0)))))}
 \end{lstlisting}
 
-The \code{fake} forms evaluate their body and add the resulting expression to the fake constraint store.
+The \code{fake} form evaluate its body and add the resulting expression to the fake constraint store.
 
 \subsection{Implementation}
+This section presents an R6RS compliant implementation of staticKanren. If there is a function left unexplained, it is likely to be included in the standard library.
+Let us first define some macros (syntactic extensions) to make the code more compact. The pair of macro forms \code{letg@} and \code{lambdag@} helps extract various constraints from states. The "g" at the end is supposed to stand for "goal" (because goal constructors takes states as input), but it can be used in other cases.
+\begin{lstlisting}
+(define-syntax letg@
+  ;; let with state inspection
+  (syntax-rules (:)
+    [(_ (c : s* ...) e)
+     (let ([s* (c-> c 's*)] ...) e)]))
+
+(define-syntax lambdag@
+  ;; lambda with state inspection
+  (syntax-rules (:)
+    [(_ (c) e) (lambda (c) e)]
+    [(_ (c : s* ...) e)
+     (lambda (c) (letg@ (c : s* ...) e))]))
+\end{lstlisting}
+
+The syntactic form \code{case-term} acts as a term dispatcher. There are three types of terms in miniKanren: variables (denoted \code{u} or \code{v}), pairs (denoted \code{(a . d)}) and atoms (including symbols and the empty lists).
+\begin{lstlisting}
+(define-syntax case-term
+  ;; A type dispatcher for mk terms
+  (syntax-rules ()
+    [(_ e [v e1] [(a d) e2] [atom e3])
+     (let ([term e])
+       (cond
+        [(var? term) (let ([v term]) e1)]
+        [(pair? term) (let ([a (car term)] [d (cdr term)]) e2)]
+        [else (let ([atom term]) e3)]))]))
+\end{lstlisting}
+
+The function \code{teq?} compares two terms. Two terms are only equal if they are the same Scheme object, or if they are pairs of the same Scheme objects.
+\begin{lstlisting}
+(define teq?
+  ;; Compares two mk terms
+  (lambda (t1 t2)
+    (or (eq? t1 t2)
+        (and (pair? t1) (pair? t2)
+             (teq? (car t1) (car t2))
+             (teq? (cdr t1) (cdr t2))))))
+\end{lstlisting}
+
+The following functions construct and dispatch variables. Variables are vectors of two elements: its name (a symbol) and its birthdate (a number). Additionally, we would like to order variables. A variable is prioritized over another if it has a smaller birthdate (i.e. it was introduced sooner), or if it has the same birthdate and a lexicographically lesser name.
+\begin{lstlisting}
+(;; name is a symbol, bd is a number
+ define var (lambda (name bd) (vector name bd)))
+(define var->name (lambda (var) (vector-ref var 0)))
+(define var->bd (lambda (var) (vector-ref var 1)))
+(define var? vector?)
+(define var<?
+  ;; v1 is prioritized over v2
+  (lambda (v1 v2)
+    (let ([n1 (symbol->string (var->name v1))] [bd1 (var->bd v1)]
+          [n2 (symbol->string (var->name v2))] [bd2 (var->bd v2)])
+      (or (< bd1 bd2)
+          (and (= bd1 bd2) (string<? n1 n2))))))
+\end{lstlisting}
+
+The following are functions concerning environments and associations. Environments are lists of associations; associations are two-element lists. The left-hand side (lhs) of an association is always a variable, while its rhs can be an arbitrary term. For these features, environments can be thought of as acyclic directed graphs.
+\begin{lstlisting}
+(define make-s (lambda (u v) `(,u ,v)))
+(define lhs car)
+(define rhs cadr)
+(define extend (lambda (env l r) `(,(make-s l r) . ,env)))
+(define extend-check
+  (lambda (v t S)
+    (and (not (occurs? v t S))
+         (extend S v t))))
+\end{lstlisting}
+
+Next we have definitions about constraints. Many of the functions could easily be defined automatically using record, but we use list to retain conceptual simplicity and flexibility.
+\begin{lstlisting}
+(define all-constraints '(S C D F))
+(define init-S '())
+(define init-C 0)
+(define init-D '())
+(define init-F '())
+(define make-c (lambda (S C D F) (list S C D F)))
+(define init-c (make-c init-S init-C init-D init-F))
+(define c->
+  (lambda (c store)
+    (rhs (assq store (map list all-constraints c)))))
+(define update-S (lambda (c S) (letg@ (c : C D F) (make-c S C D F))))
+(define update-C (lambda (c C) (letg@ (c : S D F) (make-c S C D F))))
+(define update-D (lambda (c D) (letg@ (c : S C F) (make-c S C D F))))
+(define update-F (lambda (c F) (letg@ (c : S C D) (make-c S C D F))))
+\end{lstlisting}
+
+The last of the groundwork concerns the answer stream monad. Because there are no lazy streams, they are much simpler than their counterparts in miniKanren. Even though they are trivial, We keep them here for comparison and for making the intention clearer in several parts of the code.
+\begin{lstlisting}
+(define mzero (lambda () '()))
+(define unit (lambda (x) `(,x)))
+(define choice (lambda (x y) `(,x . ,y)))
+\end{lstlisting}
+
+Here comes the interesting part. As a starter, no function is more suitable than \code{walk}. This function returns the most valuable form of a term within a substitution.
+\begin{lstlisting}
+(define walk
+  (lambda (u S)
+    (let walk ([u u])
+      (cond
+       [(and (var? u) (assq u S)) =>
+        (lambda (pr) (walk (rhs pr)))]
+       [else u]))))
+\end{lstlisting}
+
+Actually, that last paragraph is not true, \code{walk} will not continue walking if it encounters a pair. \code{walk*} keeps going even if it encounters a pair.
+\begin{lstlisting}
+(define walk*
+  (lambda (t S)
+    (let ([t (walk t S)])
+      (case-term t
+        [v v]
+        [(a d) `(,(walk* a S) . ,(walk* d S))]
+        [a a]))))
+\end{lstlisting}
 
 \subsection{Applications}
