@@ -81,7 +81,7 @@ Actually, \code{==} is the only \textit{constraint} in the what is called the "c
 The concept of unification has its roots in predicate logic. The terms of predicate logic can be represented in Scheme by the following rules:
 \begin{itemize}
 \item Variables are logic variables.
-\item For function expressions of the kind $f(t_1,...,t_n)$, we move $f$ to the inside of the parentheses; and recursively translate each argument $t_i$ to \code{g\_i}, resulting in the expression \code{(f g\_1,...,g\_n)}.
+\item For function expressions of the kind $f(t_1,...,t_n)$, we move $f$ to the inside of the parentheses; and recursively translate each argument $t_i$ to \code{g_i}, resulting in the expression \code{(f g_1,...,g_n)}.
 \end{itemize}
 
 Hence, all terms of predicate logic can be broken down to just symbols and lists. This simpler representation has two important advantages over the more traditional representation of Prolog. First, we can omit arguments, writing terms such as \code{(f x . y)} and later unify it with \code{(f 1 2 3)} to get \code{x = 1} and \code{y = (2 3)}. Second, users don't need to wonder about when to use predicates and when to use pairs/lists\footnote{Usage of predicates are more efficient, however, especially when the number of arguments are known. The reason is that predicates are smaller and their arguments may be indexed.}.
@@ -91,13 +91,13 @@ Below are some example usage of \code{==}.
 (run* (q)
   (== 'x 'x))
 \end{lstlisting}
-$\Rightarrow$ \code{(\_.0)}
+$\Rightarrow$ \code{(_.0)}
 
 \begin{lstlisting}
 (run* (q)
   (== '(x y) '(x y)))
 \end{lstlisting}
-$\Rightarrow$ \code{(\_.0)}
+$\Rightarrow$ \code{(_.0)}
 
 \begin{lstlisting}
 (run* (q)
@@ -162,13 +162,13 @@ For a reason that will become apparent up later, it is important to demystify th
 \begin{lstlisting}
 (run* (p q r) (== p q))
 \end{lstlisting}
-$\Rightarrow$ \code{((\_.0 \_.0 \_.1))}
+$\Rightarrow$ \code{((_.0 _.0 _.1))}
 
-Second, if a variable is tied to a value then the value will be used instead of the form \code{\_.n}. Furthermore, if a variable is sure to be a pair then that fact is also made known in the answer, for example:
+Second, if a variable is tied to a value then the value will be used instead of the form \code{_.n}. Furthermore, if a variable is sure to be a pair then that fact is also made known in the answer, for example:
 \begin{lstlisting}
 (run* (q) (fresh (x y) (== `(,x ,y) q)))
 \end{lstlisting}
-$\Rightarrow$ \code{((\_.0 \_.1))}
+$\Rightarrow$ \code{((_.0 _.1))}
 
 A simple principle to keep in mind is that \textit{information must be preserved during reification}. The only lost information, however, are the names of the logic variables. The reason is due to the name shadowing phenomenon mentioned earlier. That is, if we had chosen to represent unknown variables by their names, then there would be no way of telling whether two variables were really declared to have the same value or they just happen to bear the same name. As we shall see later, there is a simple way to fix this annoying issue.
 
@@ -209,7 +209,7 @@ The introduction of miniKanren's core should be complete with \code{==}, \code{f
 \begin{lstlisting}
 (run* (q) (=/= 5 q))
 \end{lstlisting}
-$\Rightarrow$ \code{((\_.0 (=/= ((\_.0 5)))))}
+$\Rightarrow$ \code{((_.0 (=/= ((_.0 5)))))}
 
 The program above returns one answer, stating that while \code{q} is unknown, it is must not be made equivalent to \code{5}. If we happens to do that, the program fails:
 \begin{lstlisting}
@@ -221,6 +221,7 @@ To better understand answers containing disequalities, a more complex example is
 \begin{lstlisting}
 (run* (q p r) (=/= `(,q ,p) `(1 2)) (=/= p r))
 \end{lstlisting}
-$\Rightarrow$ \code{(((\_.0 \_.1 \_.2) (=/= ((\_.0 1) (\_.1 2)) ((\_.1 \_.2)))))}
+$\Rightarrow$
+\code{(((_.0 _.1 _.2) (=/= ((_.0 1) (_.1 2)) ((_.1 _.2)))))}
 
 We see that the disequality constraint store is simply a list of mini anti-substitution lists. Each substitution list in turns contains disassociations of the form \code{(x v)} where \code{x} must be a variable. In plain English, the answer above says that \code{p} is different from \code{r} and that either \code{q} must be different from \code{1} or \code{p} must be different from \code{2}.

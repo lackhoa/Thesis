@@ -1,4 +1,4 @@
-\lstset{language=pseudo, showstringspaces=false,  breaklines=true}
+\lstset{language=pseudo, frame=single}
 \begin{lstlisting}[caption=An incomplete Scheme evaluator, label=evaluator]
 global-env = ()
 function lookup(iden, env):
@@ -43,4 +43,4 @@ function apply(procedure, args):
       return eval(body, extend(params, args, env))
     else: error("Application of non-function")
 \end{lstlisting}
-\lstset{language=Scheme, showstringspaces=false,  breaklines=true}
+\lstset{language=Scheme, showstringspaces=false,  breaklines=true, frame=none}

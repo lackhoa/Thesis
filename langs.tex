@@ -1,7 +1,6 @@
 \usepackage{listings}
 \lstset{
   basicstyle=\small\ttfamily,
-  frame=lrtb,
 }
 \lstdefinelanguage{pseudo}{
   keywords={return, if, elif, match, function, for, in, else, and, or, <-, with},
@@ -32,3 +31,4 @@
   breakatwhitespace=true,
   literate=*{`}{{`}}{1} {'}{{'}}{1}
 }
+\newcommand{\code}[1]{\lstinline{#1}}
