@@ -45,46 +45,8 @@ $\Rightarrow$
 The \code{fake} form evaluate its body and add the resulting expression to the fake constraint store.
 
 \subsection{Implementation}
-This section presents an R6RS compliant implementation of staticKanren. If there is a function left unexplained, it is likely to be included in the standard library.
+This section presents an R6RS compliant implementation of staticKanren. We will highlight only those parts that demonstrates fundamental differences from the standard miniKanren implementation describe by \textcite{byrdphd}\footnote{However, this does not mean that merely overriding the definitions of miniKanren by the ones in this paper would give a working staticKanren since there are many other small differences (such as association representation).}. The full implementation of the code can be found at GITHUB URL GOES HERE!
 Let us first define some macros (syntactic extensions) to make the code more compact. The pair of macro forms \code{letg@} and \code{lambdag@} helps extract various constraints from states. The "g" at the end is supposed to stand for "goal" (because goal constructors takes states as input), but it can be used in other cases.
-\begin{lstlisting}
-(define-syntax letg@
-  ;; let with state inspection
-  (syntax-rules (:)
-    [(_ (c : s* ...) e)
-     (let ([s* (c-> c 's*)] ...) e)]))
-
-(define-syntax lambdag@
-  ;; lambda with state inspection
-  (syntax-rules (:)
-    [(_ (c) e) (lambda (c) e)]
-    [(_ (c : s* ...) e)
-     (lambda (c) (letg@ (c : s* ...) e))]))
-\end{lstlisting}
-
-The syntactic form \code{case-term} acts as a term dispatcher. There are three types of terms in miniKanren: variables (denoted \code{u} or \code{v}), pairs (denoted \code{(a . d)}) and atoms (including symbols and the empty lists).
-\begin{lstlisting}
-(define-syntax case-term
-  ;; A type dispatcher for mk terms
-  (syntax-rules ()
-    [(_ e [v e1] [(a d) e2] [atom e3])
-     (let ([term e])
-       (cond
-        [(var? term) (let ([v term]) e1)]
-        [(pair? term) (let ([a (car term)] [d (cdr term)]) e2)]
-        [else (let ([atom term]) e3)]))]))
-\end{lstlisting}
-
-The function \code{teq?} compares two terms. Two terms are only equal if they are the same Scheme object, or if they are pairs of the same Scheme objects.
-\begin{lstlisting}
-(define teq?
-  ;; Compares two mk terms
-  (lambda (t1 t2)
-    (or (eq? t1 t2)
-        (and (pair? t1) (pair? t2)
-             (teq? (car t1) (car t2))
-             (teq? (cdr t1) (cdr t2))))))
-\end{lstlisting}
 
 The following functions construct and dispatch variables. Variables are vectors of two elements: its name (a symbol) and its birthdate (a number). Additionally, we would like to order variables. A variable is prioritized over another if it has a smaller birthdate (i.e. it was introduced sooner), or if it has the same birthdate and a lexicographically lesser name.
 \begin{lstlisting}
@@ -102,19 +64,7 @@ The following functions construct and dispatch variables. Variables are vectors 
           (and (= bd1 bd2) (string<? n1 n2))))))
 \end{lstlisting}
 
-The following are functions concerning environments and associations. Environments are lists of associations; associations are two-element lists. The left-hand side (lhs) of an association is always a variable, while its rhs can be an arbitrary term. For these features, environments can be thought of as acyclic directed graphs.
-\begin{lstlisting}
-(define make-s (lambda (u v) `(,u ,v)))
-(define lhs car)
-(define rhs cadr)
-(define extend (lambda (env l r) `(,(make-s l r) . ,env)))
-(define extend-check
-  (lambda (v t S)
-    (and (not (occurs? v t S))
-         (extend S v t))))
-\end{lstlisting}
-
-Next we have definitions about constraints. Many of the functions could easily be defined automatically using record, but we use list to retain conceptual simplicity and flexibility.
+Next we have definitions about constraints. Many of the functions could easily be defined automatically using record, but we use list to retain conceptual simplicity and flexibility. A constraint is a 4-tuple consisting of a substitution \code{S}, a date counter \code{C}, a disequality store \code{D} and a fake constraint store \code{F}. The counter starts from 0 and counts upwards.
 \begin{lstlisting}
 (define all-constraints '(S C D F))
 (define init-S '())
@@ -132,33 +82,99 @@ Next we have definitions about constraints. Many of the functions could easily b
 (define update-F (lambda (c F) (letg@ (c : S C D) (make-c S C D F))))
 \end{lstlisting}
 
-The last of the groundwork concerns the answer stream monad. Because there are no lazy streams, they are much simpler than their counterparts in miniKanren. Even though they are trivial, We keep them here for comparison and for making the intention clearer in several parts of the code.
+The final piece of the groundwork concerns the answer stream monad. Because there are no lazy streams, they are much simpler than their counterparts in miniKanren. Even though they are trivial, we keep them here for the sake of comparison.
 \begin{lstlisting}
 (define mzero (lambda () '()))
 (define unit (lambda (x) `(,x)))
 (define choice (lambda (x y) `(,x . ,y)))
+(define mplus append)
+(define bind (λ (c* g) (apply mplus (map g c*))))
 \end{lstlisting}
 
-Here comes the interesting part. As a starter, no function is more suitable than \code{walk}. This function returns the most valuable form of a term within a substitution.
+\code{unify} takes two terms along with a substitution and returns the extended substitution where these two terms are made the same. In the case that the two terms are always different, however, \code{unify} returns \code{#f}. There is a new clause in staticKanren to handle the case where both walked terms are variables, we make sure that seniors are always on the rhs. That way, walked seniors never result in juniors.
 \begin{lstlisting}
-(define walk
-  (lambda (u S)
-    (let walk ([u u])
+(define unify
+  (lambda (t1 t2 S)
+    (let ([t1 (walk t1 S)]
+          [t2 (walk t2 S)])
       (cond
-       [(and (var? u) (assq u S)) =>
-        (lambda (pr) (walk (rhs pr)))]
-       [else u]))))
+       [(eq? t1 t2) S]
+       [(and (var? t1) (var? t2))
+        (or (and (var<? t2 t1)
+                 (extend S t1 t2))
+            (extend S t2 t1))]
+       [(var? t1) (extend-check t1 t2 S)]
+       [(var? t2) (extend-check t2 t1 S)]
+       [(and (pair? t1) (pair? t2))
+        (let ([S+ (unify (car t1) (car t2) S)])
+          (and S+ (unify (cdr t1) (cdr t2) S+)))]
+       [(equal? t1 t2) S]
+       [else #f]))))
 \end{lstlisting}
 
-Actually, that last paragraph is not true, \code{walk} will not continue walking if it encounters a pair. \code{walk*} keeps going even if it encounters a pair.
+Now we are ready to define user-level functions, starting with fake constraint.
 \begin{lstlisting}
-(define walk*
-  (lambda (t S)
-    (let ([t (walk t S)])
+(define fake
+  (lambda (expr)
+    (lambdag@ (c : F)
+      (unit (update-F c `(,expr . ,F))))))
+\end{lstlisting}
+
+Next is \code{fresh}, a conjunction in the body of a \code{letv}. \code{letv} extracts the date counter from its input state and assign it to the new variables; the counter is then incremented in the resulting states.
+\begin{lstlisting}
+(define-syntax fresh
+  (syntax-rules ()
+    [(_ (x* ...) g g* ...)
+     (letv (x* ...) (conj g g* ...))]))
+(define-syntax letv
+  (syntax-rules ()
+    [(_ (x* ...) g)
+     (lambdag@ (c : C)
+       (let ([x* (var 'x* C)] ...)
+         (g (update-C c (+ C 1)))))]))
+\end{lstlisting}
+
+The fascinating part is that reification can be made even simpler due to the fact that unknown variables get to keep their names. For the final result, \code{reify} only need to deep walk the query variables and the constraint stores in \code{S}. Additionally, a more compact representation of the disequality store is obtained by removing constraints that either contain no variable (i.e. it is grounded), or contain any irrelevant variable (i.e. variable that does not occur in the final version of \code{q*} or \code{F}).
+\begin{lstlisting}
+(define reify
+  ;; This will return a c with clausal S
+  (lambda (c q*)
+    (letg@ (c : S D F)
+      (let ([t (walk* q* S)]
+            [D (walk* D S)]
+            [F (walk* F S)])
+        (let ([R (get-vars `(,t ,F))])
+          (let ([D (rem-subsumed (purify-D D R))])
+            `(,t ,D ,F)))))))
+\end{lstlisting}
+
+For closure, helpers of \code{reify} are given below. As an aside, we treat constraint stores as normal miniKanren terms; it explains why the code is so short.
+\begin{lstlisting}
+(define get-vars
+  (lambda (t)
+    (case-term t
+      [v `(,v)]
+      [(a d) (append (get-vars a) (get-vars d))]
+      [a '()])))
+(define purify-D
+  (lambda (D R)
+    (filter (lambda (d)
+              (not (or (constant? d)
+                       (has-iv? d R))))
+            D)))
+(define constant?
+  (lambda (t)
+    (case-term t
+      [v #f]
+      [(a d) (and (constant? a) (constant? d))]
+      [atom #t])))
+(define has-iv?
+  (lambda (t R)
+    (let has-iv? ([t t])
       (case-term t
-        [v v]
-        [(a d) `(,(walk* a S) . ,(walk* d S))]
-        [a a]))))
+        [v (not (memq v R))]
+        [(a d) (or (has-iv? a) (has-iv? d))]
+        [atom #f]))))
 \end{lstlisting}
 
 \subsection{Applications}
