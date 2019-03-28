@@ -7,9 +7,9 @@ Despite its name, Prolog was not just about logic and its users generally do not
 
 Technically speaking, miniKanren is not a language with its own compiler or interpreter; it is instead a family of languages embedded in a great variety of other host languages. This paper uses the Scheme implementation since it is the canonical version mentioned in almost every research paper written on the language. Also, Scheme's macro makes the syntax less clunky and more natural to read and write. Last but not least, Scheme is an extremely elegant language with minimal syntax (some would even say no syntax), hence it is trivial to briefly specify a small portion of the language to be used in this text.
 
-\ifthesis This paper presents a way of automatically writing negative relations in miniKanren.
+\ifthesis This thesis aims to provide frameworks and techniques for writing conditionals in miniKanren as well as a way to analyze the correctness of many pre-existing miniKanren programs using conditionals.
 \else Firewalls are very important for the security of organizations. However, undocumented firewall rules are not easy to understand and test. For that purpose, this paper presents a firewall analysis assistant in miniKanren. Much work has actually been done on the subject, the most similar to mine was done by Eeronent and Zitting (\cite{Eronen2001AnES}). Their software is written in Prolog and is much more complex than the approach in this report.\fi
 
-The layout of this paper is as follow: Section \ref{prelim} specifies a subset of Scheme and gives a brief introduction to the syntax and semantics of miniKanren.
-\ifthesis Section ... proposes a way of automatically writing negation in miniKanren.
-\else Section ... introduces a prototype of a firewall analysis assistant in miniKanren.\fi
+The layout of this paper is as follow: Section \ref{prelim} introduces a subset of Scheme present in miniKanren programs and gives a brief introduction to the syntax and semantics of miniKanren.
+\ifthesis Section \ref{reif} defines reified conditionals and demonstrates their usage in miniKanren. Section \ref{static} introduces staticKanren, its implementation and applications related to reified conditionals.
+\else Section \ref{firewall} introduces a prototype of a firewall analysis assistant in miniKanren.\fi
