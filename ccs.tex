@@ -11,5 +11,7 @@ The result of these contributions is the language staticKanren containing (besid
 The goal of this thesis is to explore techniques of avoiding code duplication of positive and negative relations. We learned the important lesson that while failure can be easily expressed with reified goal constructors such as \code{condo}, the behavior of the program is almost impossible to preserve. The best solution to this problem suggested by this paper is to specify the two-way algorithm, run it through staticKanren, and manually modify the generated result if needed.
 
 This solution is not ideal, particularly due to the additional framework in staticKanren. However, I believe that it is a necessary price to pay for the mechanization of negation while retaining utmost user flexibility. An alternative approach no explored here is to use constructive negation (\cite{chan}), although it seems significantly more complex to implement.
+
+There is an interesting use case of staticKanren in Scheme program analysis. With the help of \code{condo} it is very easy to convert any Scheme program into staticKanren and extract its various modes. This application was not explored in the paper due to time constraint, but it would be a nice topic for future work.
 \else
 \fi

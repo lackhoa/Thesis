@@ -1,2 +1,182 @@
 \section{Reified outputs}\label{reif}
-Is the unification of inputs and outputs a blessing, or can it sometimes be a disadvantage? Does relational programming really subsume functional programming?
+One of the famous use case of miniKanren is creating relational interpreter. Suppose we need to write a relation called \code{lookupo} to retrieve a variable's value in an environment, which seems quite easy to write at first. We only have to retrieve it from the Scheme function \code{lookup}.
+\begin{lstlisting}
+(define lookup
+  (lambda (x env)
+    (let ([a (car env)])
+      (cond
+       [(eq? x (lhs a)) (rhs a)]
+       [else (lookup x (cdr env))]))))
+
+(define lookupo
+  (lambda (x env t)
+    (fresh (y b)
+      (== `((,y ,b) . ,rest) env)
+      (conde
+       [(== y x) (== b t)]
+       [(=/= y x) (lookupo x rest t)]))))
+\end{lstlisting}
+
+Later on we might need to actually handle the case where the variable is unbound instead of raising an error or fail. We update both definitions:
+\begin{lstlisting}
+(define lookup
+  (lambda (x env)
+    (cond
+     [(null? env) #f]
+     [else
+      (let ([a (car env)])
+        (cond
+         [(eq? x (lhs a)) a]
+         [else (lookup x (cdr env))]))])))
+
+(define lookupo
+  (lambda (x env t bound?)
+    (conde
+     [(== '() env) (== #f bound?)]
+     [(fresh (y b)
+        (== `((,y ,b) . ,rest) env)
+        (conde
+         [(== y x) (== #t bound?) (== b t)]
+         [(=/= y x) (lookupo x rest t bound?)]))])))
+\end{lstlisting}
+
+So far so good: \code{lookup} only needs to add an input indicating whether the variable is bound; meanwhile for \code{lookup} we have to devise a special signal, namely \code{#f}, for the unbound case\footnote{There is technically a way to return multiple values in Scheme, but doing so would be lengthy and unconventional.}. However, a problem arises when we actually use the relation in practice, for instance:
+\begin{lstlisting}
+(define case1
+  (lambda (x env)
+    (cond
+     [(lookup x env) => rhs]
+     [else 'Fail])))
+
+(define case1o
+  (lambda (x env out)
+    (conde
+     [(lookup x env out #t)]
+     [(lookup x env 'unbound #f) (== 'Fail out)])))
+\end{lstlisting}
+
+Where did the keyword \code{else} go? Despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, so there can be no default case. As a result, programmers must always be prepared to add extra denials to \code{conde} clauses to prevent overlapping. This issue gets serious when the control flow grows complex:
+
+\begin{lstlisting}
+(define case2
+  (lambda (x y env)
+    (cond
+     [(lookup x env) => rhs]
+     [(lookup y env) => rhs]
+     [else 'Fail])))
+
+(define case2o
+  (lambda (x y env out)
+    (conde
+     [(lookup x env out #t)]
+     [(lookup x env '? #f) (lookup y env out #t)]
+     [(lookup x env '? #f) (lookup y env '? #f)
+      (== 'Fail out)])))
+\end{lstlisting}
+
+The example above is still very generous, as moderate relations often include around four \code{conde} clauses. The number of extra denials exhibits quadratic growth, providing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a framework inspired by \textcite{reif}. The framework relies on \textbf{pseudo-functions}.
+
+Pseudo-functions receive their result instead of returning them. To make sense of this madness, observe the following transformation (the "t" at the end denotes pseudo-functions, simply because it is too late to change):
+\begin{lstlisting}
+;; From function
+(define bar  (lambda (in) v))
+;; To relation
+(define baro (lambda (in out) (== out v)))
+;; To pseudo-function...
+(define bart (lambda (in) (lambda (out) (baro in out))))
+;; ...which is equivalent to
+(define bart (lambda (in) (lambda (out) (== out v))))
+\end{lstlisting}
+
+In a low-level point of view, a pseudo-function is a function which takes a single argument and return a goal. It can be seen that the act of returning values in functional programming is analogous to the act of unification in logic/relational programming. Moreover, a relation can be made to return whichever of its formal parameters, depending on the circumstances:
+\begin{lstlisting}
+;; From relation
+(define conso (lambda (a d ls) (== `(,a . ,d) ls)))
+;; To pseudo-function 1
+(define cart (lambda (ls) (lambda (a) (fresh (d) (conso a d ls)))))
+;; To pseudo-function 2
+(define cdrt (lambda (ls) (lambda (d) (fresh (a) (conso a d ls)))))
+;; To pseudo-function 3
+(define const (lambda (a d) (lambda (ls) (conso a d ls))))
+\end{lstlisting}
+I have never encountered a situation where this is actually useful, since there is generally only one parameters deemed as the "output". It is worth noting that even though they act like functions, pseudo-functions can affect more than the just the output. For example, a call to \code{(cart x)} will always instantiate \code{x} to a pair if it is currently unknown.
+
+Going back to the problem of conditionals, we first define two trivial pseudo-functions \code{truet} and \code{falset}, "returning" \code{#t} and \code{#f} respectively.
+
+\begin{lstlisting}
+(define truet (lambda () (lambda (?) (== #t ?))))
+(define falset (lambda () (lambda (?) (== #f ?))))
+\end{lstlisting}
+
+Next, we define a "primitive" pseudo-function similar to Scheme's \code{eq?}:
+\begin{lstlisting}
+(define ==t
+  (lambda (x y)
+    (lambda (?)
+      (conde
+       [(== #t ?) (== x y)]
+       [(== #f ?) (=/= x y)]))))
+\end{lstlisting}
+
+Next, we turn to the means of combination, starting with \code{negt} (negation):
+\begin{lstlisting}
+(define negt
+  (lambda (g)
+    (lambda (?)
+      (conde
+       [(== #t ?) (g #f)]
+       [(== #f ?) (g #t)]))))
+\end{lstlisting}
+
+From which \code{=/=t} can be trivially derived:
+\begin{lstlisting}
+(define =/=t
+  (lambda (x y) (negt (==t x y))))
+\end{lstlisting}
+
+Similarly, \code{conjt} and \code{disjt}, representing conjunction and disjunction respectively, are defined using macro:
+\begin{lstlisting}
+(define-syntax conjt
+  (syntax-rules ()
+    [(_) (truet)]
+    [(_ g) g]
+    [(_ g1 g2 gs ...)
+     (lambda (?)
+       (conde
+        [(g1 #t) ((conjt g2 gs ...) ?)]
+        [(== #f ?) (g1 #f)]))]))
+
+(define-syntax disjt
+  (syntax-rules ()
+    [(_) (falset)]
+    [(_ g) g]
+    [(_ g1 g2 gs ...)
+     (lambda (?)
+       (conde
+        [(== #t ?) (g1 #t)]
+        [(g1 #f)  ((disjt g2 gs ...) ?)]))]))
+\end{lstlisting}
+
+Sometimes it is necessary to define new variable for pseudo-functions. For that we define \code{fresht} which doubles as a variable creator and \code{conjt}.
+\begin{lstlisting}
+(define-syntax fresht
+  (syntax-rules ()
+    [(_ (idens ...) gs ...)
+     (lambda (?) (fresh (idens ...) ((conjt gs ...) ?)))]))
+\end{lstlisting}
+
+Finally, we can define the goal constructor \code{condo} -- the closest relational counterpart of \code{cond}.
+\begin{lstlisting}
+(define-syntax condo
+  (syntax-rules (else)
+    [(_ [else]) succeed]
+    [(_ [else g]) g]
+    [(_ [else g1 g2 g* ...])
+     (fresh () g1 g2 g* ...)]
+    [(_ [test g* ...] c* ...)
+     (conde
+      [(test #t) g* ...]
+      [(test #f) (condo c* ...)])]
+    [(_) fail]))
+\end{lstlisting}
+\code{condo} is an interesting combinator because it uses two types of objects, pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case; although the default case can be omitted and the program fails when no clause matches.

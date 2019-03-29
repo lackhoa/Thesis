@@ -1,5 +1,5 @@
 \section{staticKanren}\label{static}
-This section introduces staticKanren, a language designed to analyze miniKanren programs. We will first step through some simple use cases in comparison to miniKanren so as to develop intuition for the more detailed implementation part. The last part demonstrates applications of the language.
+This section introduces staticKanren, a language designed to analyze miniKanren programs. We will first step through some simple use cases in comparison to miniKanren so as to develop intuition for the more detailed implementation part. Later sections demonstrate some applications of the language.
 
 \subsection{Introductory examples}
 On the surface, staticKanren was designed to look as close to miniKanren as possible; however there are still some fundamental differences. Unlike miniKanren, we cannot model infinite answer streams with staticKanren. In fact, staticKanren programs can only return all answers using \code{run*} as there is no point keeping the other answers secrets. As a result, we cannot write recursive relations in staticKanren as is. On the bright side, this gives the language's implementation a conceptual clarity over miniKanren.
@@ -215,8 +215,48 @@ This might look like a complex inference mechanism, but in fact it only requires
       ,(cdr c))))
 \end{lstlisting}
 
+This much of development already enables us to obtain the "negative" side of \code{lookupt}, namely \code{not-in-envo}. However, we first need to redefine \code{lookupt} so that the recursive call is faked.
+\begin{lstlisting}
+(define lookupt
+  (lambda (x env t)
+    (lambda (bound?)
+      (conde
+       [Unchanged ...]
+       [(fresh (y b rest)
+          (== `((,y . ,b) . ,rest) env)
+          (condo
+           [Unchanged ...]
+           [else
+            (;; The only place that is changed
+             fake `((lookupt ,x ,rest ,t) ,bound?))]))]))))
+\end{lstlisting}
+
+Now we can call \code{run*su} to extract \code{not-in-envo}: 
+\begin{lstlisting}
+(run*su (x env) ((lookupt x env 'unbound) #f))
+\end{lstlisting}
+$\Rightarrow$
+\begin{lstlisting}
+(((#(x 0) ()) 
+  () 
+  ())
+ ((#(x 0) 
+   ((#(y 1) . #(b 1)) . #(rest 1)))
+  (((#(y 1) #(x 0))))
+  (((lookupt #(x 0) #(rest 1) unbound) #f))))
+\end{lstlisting}
+This response is akin to the goal:
+\begin{lstlisting}
+(conde
+ [(== '() x)]
+ [(== `((,y . ,b) . ,rest) x)
+  (=/= y x)
+  ((lookupt x rest 'unbound) #f)])
+\end{lstlisting}
+The second clause is particularly interesting: it states that if the environment is non-empty and the look-up is to fail, then the variable \code{x} must not match the association's lhs and the look-up must also fail for the tail of the environment.
+
 \subsection{Analyzing common unification pattern with anti-unification}\label{au}
-There are still cases where the answers returned do not look at all similar to the program that generated them, take \code{membero} for example.
+There are still cases where the answers returned do not look at all similar to the program that generated them. Take \code{membero} for example:
 \begin{lstlisting}
 (define membero
   (lambda (x ees)
@@ -337,9 +377,50 @@ The main work is now delegated to \code{au-extract}, which takes the answers and
 The only question left is how to clean up the substitutions. We have already done this before with the help of \code{walk*}, but this time things are not so convenient because we also want to retain the intermediate associations with the anti-unification patterns. There is a first principle which seems to work well: An association is redundant iff it is a rename (an association whose rhs is a variable) whose lhs has not yet been introduced yet. This is because we can just use the rhs without having to ever introduce the lhs. Conveniently, \code{purify-S} can keep track of already introduced variables using their birthdates.
 \begin{lstlisting}
 (define purify-S
-  (lambda (S locked)
-    (filter (lambda (s) (<= (var->bd (lhs s)) locked))
+  (lambda (S date)
+    (filter (lambda (s) (<= (var->bd (lhs s)) date))
             S)))
 \end{lstlisting}
 
-This should also explain why pattern variables are born on \code{0.5}: they are introduced after query variables, but before any other variable in the program.
+This should also explain why pattern variables are born on \code{0.5}: they are introduced after query variables, but before any other variable introduced by the user.
+
+With the complete implementation, we can start using \code{run*au} to rewrite programs. The call below will return \code{lookupo}, obtained by forcing \code{lookupt} to return \code{#t}. Notice that the recursive call of \code{lookupt} has been replaced by a fake one.
+\begin{lstlisting}
+(run*au (x env t) ((lookupt x env t) #t))
+\end{lstlisting}
+$\Rightarrow$
+\begin{lstlisting}
+(((#(env 0) 
+   ((#(au0 0.5) . #(au1 0.5)) . #(rest 1))))
+ ((((#(au1 0.5) (val . #(t 0)))
+    (#(au0 0.5) #(x 0)))
+   () 
+   ())
+  (((#(t 0)
+     (closure
+      #(lam-expr 2)
+      ((#(x 0) rec . #(lam-expr 2)) . #(rest 1))))
+    (#(au1 0.5) (rec . #(lam-expr 2)))
+    (#(au0 0.5) #(x 0)))
+   ()
+   ())
+  (() 
+   (((#(au0 0.5) #(x 0))))
+   (((lookupt #(x 0) #(rest 1) #(t 0)) #t)))))
+\end{lstlisting}
+This response is akin to the goal:
+\begin{lstlisting}
+(fresh (au0 au1)
+  (== `((,au0 . ,au1) . ,rest) env)
+  (conde
+   [(== au0 x) (== `(val . ,t) au1)]
+   [(== au0 x)
+    (== au1 `(rec . ,lam-expr))
+    (== `(closure
+         ,lam-expr
+         ((,x . (rec . ,lam-expr)) . ,rest))
+       t)]
+   [(=/= au0 x)
+    ((lookupt x rest t) #t)]))
+\end{lstlisting}
+Anti-unification identifies that across all clauses, the environment is always a non-empty list with the first element being an association. It also correctly handles how each clause has to do afterwards to obtain the original semantics. Especially the third clause is a clever assertion: it says that if the association's lhs (\code{au0}) is different from the variable \code{x} and the look-up is to succeed, then the look-up of \code{x} from the tail of the environment has to succeed.
