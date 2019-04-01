@@ -3,7 +3,7 @@
 This paper presented the following contributions:
 \begin{enumerate}
 \item A technique of using "reified if" to express failure in a relational manner.
-\item The implementation a miniKanren variant to help extract certain "modes" of a program.
+\item The implementation a miniKanren variant to help extract certain modes of programs.
 \item A way of reformatting staticKanren's answers to make it look more like the source program.
 \end{enumerate}
 The result of these contributions is the language staticKanren containing (besides mode extraction) a better presentation of answers and a more elegant core enabled by the omission of infinite streams. Additionally, staticKanren programs look a lot more like Scheme program. Perhaps this fact might be beneficial in making miniKanren programs more appealing to Scheme users.
@@ -13,5 +13,15 @@ The goal of this thesis is to explore techniques of avoiding code duplication of
 This solution is not ideal, particularly due to the additional framework in staticKanren. However, I believe that it is a necessary price to pay for the mechanization of negation while retaining utmost user flexibility. An alternative approach no explored here is to use constructive negation (\cite{chan}), although it seems significantly more complex to implement.
 
 There is an interesting use case of staticKanren in Scheme program analysis. With the help of \code{condo} it is very easy to convert any Scheme program into staticKanren and extract its various modes. This application was not explored in the paper due to time constraint, but it would be a nice topic for future work.
+
 \else
+This paper presented the following contributions:
+\begin{enumerate}
+\item A simple modeling of network firewalls.
+\item The implementation of a minimal firewall analysis assistant in miniKanren.
+\end{enumerate}
+
+Out of these two, the first is the most important because it is useful for educational purpose. Being quite short, the firewall analyzer still lacks useful properties of a useful firewall analyzer such as the ability to convert ACL to logical statements or many standard pre-made queries. Also, the simplified model does not deal with changes very easily because each change has to be converted to be compatible with the model.
+
+For future works, it would be nice to incorporate actual IPv4 addresses for use in conjunction with the hierarchical topology. Modifications have to be made concerning the validity of actual networking packets (such the "ICMP established flag" example we saw above). Ultimately, the program should have the ability to do actual firewall synthesis, with or without help from users. In my opinion, this goal is quite far-fetched because it is quite hard for a purely logical program to understand what is meant by a "common sense" firewall (i.e. to limit the search space to firewalls that are relevant). A puzzling firewall that does what it is supposed to is still useless. Indeed, there may be commercial firewall designers available on the market that adhere to a common sense standard, but I still wonder if the two methods can be combined.
 \fi

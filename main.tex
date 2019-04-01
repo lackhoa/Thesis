@@ -1,5 +1,5 @@
-\newif\ifthesis \thesistrue
-\newif\ifpublish \publishfalse
+\newif\ifthesis \thesisfalse
+\newif\ifpublish \publishtrue
 
 \documentclass[12pt]{article}
 \bibliographystyle{apalike}
@@ -188,6 +188,7 @@
     \input{ccs}
 \else
     \ifthesis \input{reif.tex} \else \input{firewall} \fi
+    \input{ccs}
 \fi
 
 
