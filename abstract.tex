@@ -18,7 +18,7 @@
     \hline
     \multicolumn{2}{|l|}{\textbf{Thesis title}} & \textbf{Pages} & \textbf{Appendices} \\
     \multicolumn{2}{|l|}{} & & \\
-    \multicolumn{2}{|l|}{\mytitle{}} & XX & X \\
+    \multicolumn{2}{|l|}{\mytitle{}} & \pageref{LastPage} & 0 \\
     \hline
     \multicolumn{4}{|l|}{\textbf{Commissioned by}} \\
     \multicolumn{4}{|l|}{} \\
@@ -29,14 +29,14 @@
     \multicolumn{4}{|l|}{Timo Hynninen} \\
     \hline
     \multicolumn{4}{|l|}{\textbf{Abstract}} \\
-    \multicolumn{4}{|A|}{Relational programming promises the ability to run programs backwards. Using miniKanren, it is very easy to convert any pure function into a relation. And because of its embedded nature, programmers can enjoy the declarative power of miniKanren without leaving the comfort of their favorite programming languages. Even though this paper chooses to discuss the Scheme implementation of the language, the techniques presented here is general.} \\
-    \multicolumn{4}{|A|}{Some miniKanren users prefer to write first a prototype in a functional manner, and later transform that program to its relational form. Despite being an easy task, this transformation frequently increases the code size. As programs grow longer, there are more chance for unfortunate errors to creep in.} \\
-    \multicolumn{4}{|A|}{One reason for this size increase and why some people want to prototype programs functionally in the first place has to do with the symbiosis between Boolean-returning functions and conditionals. Branching has long been a powerful programming tool, yet they have no adequate counterpart in miniKanren. \code{conda} and \code{condu} cannot be used relationally as they are logically impure. And even though users are told to convert all \code{cond} expressions to \code{conde}, \code{conde} clauses do not automatically deny preceding tests, a job which is then delegated to the one performing the conversion. As a result, many programs lose their compactness and structural clarity after being converted.} \\
-    \multicolumn{4}{|A|}{This thesis aims to provide frameworks and techniques for writing conditionals in miniKanren as well as a way to analyze the correctness of many pre-existing miniKanren programs using conditionals. As for the former, the goal constructor \code{condo} along with test combinators \code{conjt} and \code{disjt} are introduced. Concerning the latter, a more involved method of static analysis and rewriting is used, resulting in a new language named staticKanren.} \\
+    \multicolumn{4}{|A|}{Relational programming promises the ability to run programs backwards. Using miniKanren, it is very easy to convert pure functions into relations. And because of its embedded nature, programmers can enjoy the declarative power of miniKanren without leaving the comfort of their favorite programming languages. Even though this paper chooses to discuss the Scheme implementation of the language, the techniques presented here is general for all implementations.} \\
+    \multicolumn{4}{|A|}{Some miniKanren users prefer to first write a prototype in a functional manner in Scheme, and later transform that prototype into its relational counterpart. Despite being an easy task, this transformation frequently increases the code size. As programs grow longer, there are more chances for human errors to creep in.} \\
+    \multicolumn{4}{|A|}{One reason for this size increase (and why some people want to write programs functionally in the first place) has to do with the symbiosis between Boolean-returning functions and conditionals. Branching has long been a powerful programming tool, yet they have no adequate counterpart in miniKanren. \code{conda} and \code{condu} cannot be used relationally as they are logically impure. And even though new users are guided to convert all \code{cond} expressions to \code{conde}, \code{conde} clauses do not automatically deny preceding tests, a job which is then delegated to the one performing the conversion. As a result, many programs lose their compactness and structural clarity after the conversion.} \\
+    \multicolumn{4}{|A|}{This thesis aims to provide frameworks and techniques for writing conditionals in miniKanren as well as a way to analyze the correctness of pre-existing miniKanren programs using conditionals. As for the former, the goal constructor \code{condo} along with test combinators \code{conjt} and \code{disjt} are introduced. Concerning the latter, a more involved method of static analysis and rewriting is used, resulting in a new language variant called staticKanren.} \\
     \hline
     \multicolumn{4}{|l|}{\textbf{Keywords}} \\
     \multicolumn{4}{|l|}{} \\
-    \multicolumn{4}{|l|}{programming, logic} \\
+    \multicolumn{4}{|l|}{programming, logic, Scheme, miniKanren} \\
     \hline
 \end{tabular}
 \end{table}

@@ -1,11 +1,12 @@
-\newif\ifthesis \thesisfalse
-\newif\ifpublish \publishtrue
+\newif\ifthesis \thesistrue
+\newif\ifpublish \publishfalse
 
 \documentclass[12pt]{article}
 \bibliographystyle{apalike}
 
 \include{langs}
 %packages!
+\usepackage{lastpage}
 \usepackage{comment}
 \usepackage{setspace}
 \usepackage{datetime}
@@ -88,7 +89,7 @@
 
 %Enter parameters here
 \newcommand{\myauthor}{Khoa Vo}
-\newcommand{\mytitle}{\ifthesis Functional style within logic programming \else Firewall analysis assistant in miniKanren \fi}
+\newcommand{\mytitle}{\ifthesis Relational conditionals with pseudo-functions \else Firewall analysis assistant in miniKanren \fi}
 \newcommand{\subtitle}{\ifthesis A miniKanren perspective \else \fi}
 \newcommand{\rpas}{\ifthesis Bachelor's thesis \else Report \fi}
 \newcommand{\degree}{Degree programme in Information Technology}
@@ -184,11 +185,10 @@
 \ifpublish
     \input{intro}
     \input{prelim}
-    \ifthesis \input{reif.tex} \input{staticKanren} \else \input{firewall} \fi
+    \ifthesis \input{reif} \input{staticKanren} \else \input{firewall} \fi
     \input{ccs}
 \else
-    \ifthesis \input{reif.tex} \else \input{firewall} \fi
-    \input{ccs}
+    \ifthesis \input{staticKanren} \else \input{firewall} \fi
 \fi
 
 

@@ -2,17 +2,21 @@
 \ifthesis
 This paper presented the following contributions:
 \begin{enumerate}
-\item A technique of using "reified if" to express failure in a relational manner.
+\item A technique of using pseudo-functions to express conditionals in miniKanren.
 \item The implementation a miniKanren variant to help extract certain modes of programs.
-\item A way of reformatting staticKanren's answers to make it look more like the source program.
+\item A way of reformatting staticKanren's answers to a more human-oriented style.
 \end{enumerate}
-The result of these contributions is the language staticKanren containing (besides mode extraction) a better presentation of answers and a more elegant core enabled by the omission of infinite streams. Additionally, staticKanren programs look a lot more like Scheme program. Perhaps this fact might be beneficial in making miniKanren programs more appealing to Scheme users.
 
-The goal of this thesis is to explore techniques of avoiding code duplication of positive and negative relations. We learned the important lesson that while failure can be easily expressed with reified goal constructors such as \code{condo}, the behavior of the program is almost impossible to preserve. The best solution to this problem suggested by this paper is to specify the two-way algorithm, run it through staticKanren, and manually modify the generated result if needed.
+The goal of this thesis is to explore techniques of avoiding code duplication of positive and negative relations. We learned along the way the important fact that while conditionals can be easily expressed with \code{condo}, the behavior of the program is almost impossible to preserve. The best solution to this problem suggested by this paper is to specify the two-way algorithm, run it through staticKanren then manually check and modify the generated result if needed for the final program. While this solution is not ideal due to the additional framework in staticKanren, I believe that it is a necessary price to pay for the mechanization of negation while retaining utmost user flexibility. An alternative approach no explored here is to use constructive negation (\cite{chan}), although it seems significantly more complex to implement.
 
-This solution is not ideal, particularly due to the additional framework in staticKanren. However, I believe that it is a necessary price to pay for the mechanization of negation while retaining utmost user flexibility. An alternative approach no explored here is to use constructive negation (\cite{chan}), although it seems significantly more complex to implement.
+There is an interesting use case of staticKanren in Scheme program analysis. With the help of \code{condo} it is very easy to convert any Scheme program into staticKanren and extract its various modes. Additionally, pseudo-functions might also be useful for expressing other useful functional programming features such as composition.
 
-There is an interesting use case of staticKanren in Scheme program analysis. With the help of \code{condo} it is very easy to convert any Scheme program into staticKanren and extract its various modes. This application was not explored in the paper due to time constraint, but it would be a nice topic for future work.
+I thank my thesis supervisor Timo Hynninen for the advice at the start of the process. Additionally, I am grateful for William Byrd for spending time answering my questions. The topic idea of this thesis is largely thanks to him.
+
+
+
+
+
 
 \else
 This paper presented the following contributions:

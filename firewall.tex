@@ -178,10 +178,9 @@ How to read this: packet \code{(www isp isp #t)} is blocked by the "deny all" en
 
 By restricting the entry parameter even more, we question the usefulness of each entry. For example, we can ask which function the final entry serves (if it even does anything).
 \begin{lstlisting}
-(pp "acl100 permit icmp")
-(pp (run 1 (pkt entry)
-      (fresh (?) (== '[permit icmp ten-net twenty-net *e] entry))
-      (acl-mapo acl100 pkt entry)))
+(run 1 (pkt entry)
+  (fresh (?) (== '[permit icmp ten-net twenty-net *e] entry))
+  (acl-mapo acl100 pkt entry))
 \end{lstlisting}
 $\Rightarrow$
 \begin{lstlisting}

@@ -1,5 +1,5 @@
-\section{Reified outputs}\label{reif}
-One of the famous use case of miniKanren is creating relational interpreter. Suppose we need to write a relation called \code{lookupo} to retrieve a variable's value in an environment, which seems quite easy to write at first. We only have to retrieve it from the Scheme function \code{lookup}.
+\section{Pseudo-functions}\label{reif}
+Suppose we need to write a relation called \code{lookupo} to retrieve a variable's value in an environment. The task at first is just a straightforward transformation from the Scheme function \code{lookup}.
 \begin{lstlisting}
 (define lookup
   (lambda (x env)
@@ -10,7 +10,7 @@ One of the famous use case of miniKanren is creating relational interpreter. Sup
 
 (define lookupo
   (lambda (x env t)
-    (fresh (y b)
+    (fresh (y b rest)
       (== `((,y ,b) . ,rest) env)
       (conde
        [(== y x) (== b t)]
@@ -33,29 +33,29 @@ Later on we might need to actually handle the case where the variable is unbound
   (lambda (x env t bound?)
     (conde
      [(== '() env) (== #f bound?)]
-     [(fresh (y b)
+     [(fresh (y b rest)
         (== `((,y ,b) . ,rest) env)
         (conde
          [(== y x) (== #t bound?) (== b t)]
          [(=/= y x) (lookupo x rest t bound?)]))])))
 \end{lstlisting}
 
-So far so good: \code{lookup} only needs to add an input indicating whether the variable is bound; meanwhile for \code{lookup} we have to devise a special signal, namely \code{#f}, for the unbound case\footnote{There is technically a way to return multiple values in Scheme, but doing so would be lengthy and unconventional.}. However, a problem arises when we actually use the relation in practice, for instance:
+So far so good: \code{lookup} only needs to add an input indicating whether the variable is bound; meanwhile for \code{lookup} we have to devise a special signal, namely \code{#f}, for the unbound case\footnote{There is technically a way to return multiple values in Scheme, but doing so would be lengthy and unconventional.}. However, a problem arises when we actually use the output signal:
 \begin{lstlisting}
 (define case1
   (lambda (x env)
     (cond
      [(lookup x env) => rhs]
-     [else 'Fail])))
+     [else #f])))
 
 (define case1o
   (lambda (x env out)
     (conde
-     [(lookup x env out #t)]
-     [(lookup x env 'unbound #f) (== 'Fail out)])))
+     [(lookupo x env out #t)]
+     [(lookupo x env 'unbound #f) (== #f out)])))
 \end{lstlisting}
 
-Where did the keyword \code{else} go? Despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, so there can be no default case. As a result, programmers must always be prepared to add extra denials to \code{conde} clauses to prevent overlapping. This issue gets serious when the control flow grows complex:
+Why can we not use \code{else} in the second clause? The reason is that despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, so there can be no default case. As a result, programmers must always be prepared to append extra denials in lower \code{conde} clauses. This issue gets serious when the control flow is more complex:
 
 \begin{lstlisting}
 (define case2
@@ -63,32 +63,32 @@ Where did the keyword \code{else} go? Despite the similarity in appearance, \cod
     (cond
      [(lookup x env) => rhs]
      [(lookup y env) => rhs]
-     [else 'Fail])))
+     [else #f])))
 
 (define case2o
   (lambda (x y env out)
     (conde
-     [(lookup x env out #t)]
-     [(lookup x env '? #f) (lookup y env out #t)]
-     [(lookup x env '? #f) (lookup y env '? #f)
-      (== 'Fail out)])))
+     [(lookupo x env out #t)]
+     [(lookupo x env '? #f) (lookupo y env out #t)]
+     [(lookupo x env '? #f) (lookupo y env '? #f)
+      (== #f out)])))
 \end{lstlisting}
 
-The example above is still very generous, as moderate relations often include around four \code{conde} clauses. The number of extra denials exhibits quadratic growth, providing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a framework inspired by \textcite{reif}. The framework relies on \textbf{pseudo-functions}.
+The example above is still very generous, as it is usual for relations to include four or more \code{conde} clauses. The number of extra denials exhibits quadratic growth, introducing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a technique inspired by \textcite{reif}. This solution relies on \textbf{pseudo-functions}.
 
-Pseudo-functions receive their result instead of returning them. To make sense of this madness, observe the following transformation (the "t" at the end denotes pseudo-functions, simply because it is too late to change):
+Pseudo-functions receive their results as arguments instead of returning them. To make sense of this concept, observe the following transformation (the "t" at the end denotes pseudo-functions, simply because it is too late to change):
 \begin{lstlisting}
 ;; From function
-(define bar  (lambda (in) v))
+(define bar (lambda (in) 'v))
 ;; To relation
-(define baro (lambda (in out) (== out v)))
+(define baro (lambda (in out) (== out 'v)))
 ;; To pseudo-function...
 (define bart (lambda (in) (lambda (out) (baro in out))))
 ;; ...which is equivalent to
-(define bart (lambda (in) (lambda (out) (== out v))))
+(define bart (lambda (in) (lambda (out) (== out 'v))))
 \end{lstlisting}
 
-In a low-level point of view, a pseudo-function is a function which takes a single argument and return a goal. It can be seen that the act of returning values in functional programming is analogous to the act of unification in logic/relational programming. Moreover, a relation can be made to return whichever of its formal parameters, depending on the circumstances:
+From a low-level point of view, a pseudo-function is a function which takes a single argument and return a goal. It can be seen that the act of returning values in functional programming is analogous to the act of unification in logic/relational programming. Moreover, a relation can be made to return whichever of its formal parameters, depending on the circumstances:
 \begin{lstlisting}
 ;; From relation
 (define conso (lambda (a d ls) (== `(,a . ,d) ls)))
@@ -99,7 +99,7 @@ In a low-level point of view, a pseudo-function is a function which takes a sing
 ;; To pseudo-function 3
 (define const (lambda (a d) (lambda (ls) (conso a d ls))))
 \end{lstlisting}
-I have never encountered a situation where this is actually useful, since there is generally only one parameters deemed as the "output". It is worth noting that even though they act like functions, pseudo-functions can affect more than the just the output. For example, a call to \code{(cart x)} will always instantiate \code{x} to a pair if it is currently unknown.
+I have never encountered a situation where this is actually useful, since there is generally only one parameters deemed as the "output". It is worth noting that even though pseudo-functions act like pure functions, they can affect more than just the output. For instance, the goal \code{((cart x) a)} will always instantiate \code{x} to a pair if it is currently unknown.
 
 Going back to the problem of conditionals, we first define two trivial pseudo-functions \code{truet} and \code{falset}, "returning" \code{#t} and \code{#f} respectively.
 
@@ -108,7 +108,7 @@ Going back to the problem of conditionals, we first define two trivial pseudo-fu
 (define falset (lambda () (lambda (?) (== #f ?))))
 \end{lstlisting}
 
-Next, we define a "primitive" pseudo-function similar to Scheme's \code{eq?}:
+Next, we define a single "primitive" pseudo-function similar to Scheme's \code{eq?}\footnote{Depending on the implementation, more primitive pseudo-functions may be defined using additional primitive constraints.}. This function relies on both \code{==} and \code{=/=} to correctly express two branches of the output.
 \begin{lstlisting}
 (define ==t
   (lambda (x y)
@@ -118,7 +118,7 @@ Next, we define a "primitive" pseudo-function similar to Scheme's \code{eq?}:
        [(== #f ?) (=/= x y)]))))
 \end{lstlisting}
 
-Next, we turn to the means of combination, starting with \code{negt} (negation):
+Next, we provide ways of creating more complex pseudo-functions from simpler ones, starting with \code{negt} (negation):
 \begin{lstlisting}
 (define negt
   (lambda (g)
@@ -128,13 +128,13 @@ Next, we turn to the means of combination, starting with \code{negt} (negation):
        [(== #f ?) (g #t)]))))
 \end{lstlisting}
 
-From which \code{=/=t} can be trivially derived:
+From this, \code{=/=t} can be trivially derived:
 \begin{lstlisting}
 (define =/=t
   (lambda (x y) (negt (==t x y))))
 \end{lstlisting}
 
-Similarly, \code{conjt} and \code{disjt}, representing conjunction and disjunction respectively, are defined using macro:
+Similarly, \code{conjt} (conjunction) and \code{disjt} (disjunction) are defined using macro:
 \begin{lstlisting}
 (define-syntax conjt
   (syntax-rules ()
@@ -157,15 +157,35 @@ Similarly, \code{conjt} and \code{disjt}, representing conjunction and disjuncti
         [(g1 #f)  ((disjt g2 gs ...) ?)]))]))
 \end{lstlisting}
 
-Sometimes it is necessary to define new variable for pseudo-functions. For that we define \code{fresht} which doubles as a variable creator and \code{conjt}.
+This next example demonstrates conjunction:
 \begin{lstlisting}
-(define-syntax fresht
-  (syntax-rules ()
-    [(_ (idens ...) gs ...)
-     (lambda (?) (fresh (idens ...) ((conjt gs ...) ?)))]))
+(run* (t x y z)
+   ((conjt (==t x y)
+           (==t y z))
+    t))
+\end{lstlisting}
+$\Rightarrow$
+\begin{lstlisting}
+(((#f _.0 _.1 _.2) (=/= ((_.0 _.1))))
+ (#t _.0 _.0 _.0)
+ ((#f _.0 _.0 _.1) (=/= ((_.0 _.1)))))
 \end{lstlisting}
 
-Finally, we can define the goal constructor \code{condo} -- the closest relational counterpart of \code{cond}.
+Similarly, this example demonstrates disjunction:
+\begin{lstlisting}
+(run* (t x y z)
+   ((disjt (==t x y)
+           (==t y z))
+    t))
+\end{lstlisting}
+$\Rightarrow$
+\begin{lstlisting}
+((#t _.0 _.0 _.1)
+ ((#t _.0 _.1 _.1) (=/= ((_.0 _.1))))
+ ((#f _.0 _.1 _.2) (=/= ((_.0 _.1)) ((_.1 _.2)))))
+\end{lstlisting}
+
+Finally, we can define the goal constructor \code{condo} -- the closest relational counterpart of \code{cond}. Keep in mind that \code{succeed} stands for the "do nothing" goal and \code{fail} stands for the "always fail" goal.
 \begin{lstlisting}
 (define-syntax condo
   (syntax-rules (else)
@@ -179,4 +199,70 @@ Finally, we can define the goal constructor \code{condo} -- the closest relation
       [(test #f) (condo c* ...)])]
     [(_) fail]))
 \end{lstlisting}
-\code{condo} is an interesting combinator because it uses two types of objects, pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case; although the default case can be omitted and the program fails when no clause matches.
+\code{condo} is an interesting combinator because it uses two types of objects, pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case; although it can be omitted, in which case the program fails when no clause matches. The example below demonstrates the use of \code{condo}:
+\begin{lstlisting}
+(run* (x y z)
+  (condo
+   [(==t x y) succeed]
+   [(==t y z) succeed]
+   [else (== x z)]))
+\end{lstlisting}
+$\Rightarrow$
+\begin{lstlisting}
+((_.0 _.0 _.1)
+ ((_.0 _.1 _.1) (=/= ((_.0 _.1))))
+ ((_.0 _.1 _.0) (=/= ((_.0 _.1)))))
+\end{lstlisting}
+
+We are now able to replace \code{lookupo} with the pseudo-function \code{lookupt}.
+\begin{lstlisting}
+(define lookupt
+  (lambda (x env t)
+    (lambda (bound?)
+      (conde
+       [(== '() env)
+        (== #f bound?) (== t 'unbound)]
+       [(fresh (y b rest)
+          (== `((,y ,b) . ,rest) env)
+          (condo
+           [(==t y x) (== #t bound?) (== b t)]
+           [else
+            ((lookupt x rest t) bound?)]))]))))
+\end{lstlisting}
+Now the comparison between \code{case2} and \code{case2o} does not look so bad anymore.
+\begin{lstlisting}
+(define case2
+  (lambda (x y env)
+    (cond
+     [(lookup x env) => rhs]
+     [(lookup y env) => rhs]
+     [else #f])))
+
+(define case2o
+  (lambda (x y env)
+    (lambda (out)
+      (condo
+       [(lookupt x env out) succeed]
+       [(lookupt y env out) succeed]
+       [else (== #f out)]))))
+\end{lstlisting}
+
+Some readers may already be convinced to convert all of their relations to pseudo-functions. However, there are still some issues to address. Although hiding the control flow is great for readability, the downside is that there is no easy way to see what is done behind the layer of abstraction. Therefore, it is very easy for people to accidentally change the behavior of programs without knowing it. Take for example this  goal using \code{condo}:
+\begin{lstlisting}
+(fresh (x y)
+  (condo
+   [(==t 'a x) (== 'A y)]
+   [(==t 'b x) (== 'B y)]
+   [(==t 'c x) (== 'C y)]))
+\end{lstlisting}
+It is not clear that there is an issue with this code, because it looks so much like normal Scheme. The issue only shows itself when we expand the \code{condo}:
+\begin{lstlisting}
+(fresh (x y)
+  (conde
+   [(== 'a x) (== 'A y)]
+   [(=/= 'a x) (== 'b x) (== 'B y)]
+   [(=/= 'a x) (=/= 'b x) (== 'c x) (== 'C y)]))
+\end{lstlisting}
+Clearly, the additional denials in these \code{conde} clause are redundant since they are already mutually exclusive. Moreover, switching from \code{conde} to \code{condo} always means changing the way miniKanren's search work.
+
+As reality has shown that industrial miniKanren users who are conscious about their programs' behavior cannot afford \code{condo}. However, that also means we are once again stuck with the lengthy, error-prone ways of writing conditionals. To address this problem, this paper offers a way of verifying the correctness of existing programs with \textbf{staticKanren}.
