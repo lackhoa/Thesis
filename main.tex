@@ -1,5 +1,5 @@
 \newif\ifthesis \thesistrue
-\newif\ifpublish \publishfalse
+\newif\ifpublish \publishtrue
 
 \documentclass[12pt]{article}
 \bibliographystyle{apalike}
@@ -90,7 +90,7 @@
 %Enter parameters here
 \newcommand{\myauthor}{Khoa Vo}
 \newcommand{\mytitle}{\ifthesis Relational conditionals with pseudo-functions \else Firewall analysis assistant in miniKanren \fi}
-\newcommand{\subtitle}{\ifthesis A miniKanren perspective \else \fi}
+\newcommand{\subtitle}{\ifthesis Techniques in miniKanren \else \fi}
 \newcommand{\rpas}{\ifthesis Bachelor's thesis \else Report \fi}
 \newcommand{\degree}{Degree programme in Information Technology}
 \newcommand{\course}{\ifthesis \else Advanced Sever Development Project \fi}
@@ -188,7 +188,7 @@
     \ifthesis \input{reif} \input{staticKanren} \else \input{firewall} \fi
     \input{ccs}
 \else
-    \ifthesis \input{staticKanren} \else \input{firewall} \fi
+    \ifthesis \input{prelim} \else \input{firewall} \fi
 \fi
 
 
