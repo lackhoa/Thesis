@@ -1,4 +1,5 @@
 \section{Relational conditionals with pseudo-functions}\label{reif}
+\subsection{The problem with conde}
 Suppose we need to write a relation called \code{lookupo} to retrieve a variable's value in an environment. The task at first is just a straightforward transformation from the Scheme function \code{lookup}.
 \begin{lstlisting}
 (define lookup
@@ -74,8 +75,9 @@ Why can we not use \code{else} in the second clause? The reason is that despite 
       (== #f out)])))
 \end{lstlisting}
 
-The example above is still very generous, as it is usual for relations to include four or more \code{conde} clauses. The number of extra denials exhibits quadratic growth, introducing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a technique inspired by \textcite{reif}. This solution relies on \textbf{pseudo-functions}.
+The example above is still generous, as it is usual for relations to include four or more \code{conde} clauses. The number of extra denials exhibits quadratic growth, introducing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a technique inspired by \textcite{reif}. This solution relies on \textbf{pseudo-functions}.
 
+\subsection{Pseudo-function and condo}
 Pseudo-functions receive their results as arguments instead of returning them. To make sense of this concept, observe the following transformation (the "t" at the end denotes pseudo-functions, simply because it is too late to change):
 \begin{lstlisting}
 ;; From function
@@ -247,7 +249,7 @@ Now the comparison between \code{case2} and \code{case2o} does not look so bad a
        [else (== #f out)]))))
 \end{lstlisting}
 
-Some readers may already be convinced to convert all of their relations to pseudo-functions. However, there are still some issues to address. Although hiding the control flow is great for readability, the downside is that there is no easy way to see what is done behind the layer of abstraction. Therefore, it is very easy for people to accidentally change the behavior of programs without knowing it. Take for example this  goal using \code{condo}:
+Some readers may already be convinced to convert all of their relations to pseudo-functions. However, there are still some issues to address. Although hiding the control flow is great for readability, the downside is that there is no simple way to see what is done behind the layer of abstraction. As a result, it becomes easier to accidentally change the behavior of programs. Take for example this goal using \code{condo}:
 \begin{lstlisting}
 (fresh (x y)
   (condo
@@ -265,4 +267,4 @@ It is not clear that there is an issue with this code, because it looks so much 
 \end{lstlisting}
 Clearly, the additional denials in these \code{conde} clause are redundant since they are already mutually exclusive. Moreover, switching from \code{conde} to \code{condo} always means changing the way miniKanren's search work.
 
-As reality has shown that industrial miniKanren users who are conscious about their programs' behavior cannot afford \code{condo}. However, that also means we are once again stuck with the lengthy, error-prone ways of writing conditionals. To address this problem, this paper offers a way of verifying the correctness of existing programs with \textbf{staticKanren}.
+Reality has shown that serious miniKanren users who are conscious about their programs' behavior cannot afford \code{condo}, so we are once again stuck with lengthy, buggy \code{conde} clauses whose meaning cannot not be easily grasped. The next section addresses this issue by offering a way to verify the correctness of existing programs with \textbf{staticKanren}.

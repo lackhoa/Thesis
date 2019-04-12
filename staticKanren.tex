@@ -43,7 +43,7 @@ $\Rightarrow$
 
 
 \subsection{Implementation}\label{static_imp}
-This section presents an R6RS compliant implementation of staticKanren. We will highlight only those parts that demonstrates fundamental differences from the standard miniKanren implementation describe by \textcite{byrdphd}\footnote{However, this does not mean that merely overriding the definitions of miniKanren by the ones in this paper would give a working staticKanren since there are many other small technical differences.}. The full implementation can be found at \url{https://github.com/lackhoa/staticKanren}.
+This section presents an R6RS compliant implementation of staticKanren. We will highlight only those parts that demonstrates interesting differences from the standard miniKanren implementation describe by \textcite{byrdphd}\footnote{The full implementation is available at \url{https://github.com/lackhoa/staticKanren}.}.
 
 The following functions construct and dispatch variables. Variables are vectors of two elements: its name (a symbol) and its birthdate (a number). Additionally, we would like to create a total order on the set of variables. A variable is prioritized over another if its birthdate is less (i.e. it was introduced sooner), or if it has the same birthdate and a lexicographically lesser name. We call prioritized variables \textbf{seniors} and less prioritized ones \textbf{juniors}.
 \begin{lstlisting}
@@ -191,7 +191,7 @@ We see that the answer looks exactly like the program, which in turns highlights
 \end{lstlisting}
 $\Rightarrow$ \code{((((#(q 0) #(p 0))) () ()))}
 
-Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and it is removed from the final answer. It might look as if a complex inference mechanism is being used, but in fact this feature only requires a very simple change to \code{run*}. Unification has already done much of the work building up a clean substitution, we only need to retrieve it back after it has been cleaned up even more by \code{reify}. Without further hand-waving, here is \code{run*su}.
+Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and it is removed from the final answer. It might look as if a complex inference mechanism is being used, but in fact this feature only requires a simple change to \code{run*}. Unification has already done much of the work building up a clean substitution, we only need to retrieve it back after it has been cleaned up even more by \code{reify}. Without further hand-waving, here is \code{run*su}.
 \begin{lstlisting}
 (define-syntax run*su
   ;; run* with substitutions
