@@ -1,8 +1,10 @@
 \section{Relational conditionals with pseudo-functions}\label{reif}
 \subsection{The problem with conde}
-Suppose we need to write a relation called \code{lookupo} to retrieve a variable's value in an environment. The task at first is just a straightforward transformation from the Scheme function \code{lookup}.
+Suppose we need to write a relation called to retrieve a variable's value in an environment, call it \code{lookupo}. The task at first is just a straightforward transformation from the Scheme function \code{lookup}.
 \begin{lstlisting}
 (define lookup
+  ;; (lookup 'x '([x 1] [y 2] [z 3]))
+  ;; => 1
   (lambda (x env)
     (let ([a (car env)])
       (cond
@@ -10,9 +12,11 @@ Suppose we need to write a relation called \code{lookupo} to retrieve a variable
        [else (lookup x (cdr env))]))))
 
 (define lookupo
+  ;; (run* (x t) (lookupo x '([x 1] [y 2] [z 3]) t))
+  ;; => ((x 1) (y 2) (z 3))
   (lambda (x env t)
     (fresh (y b rest)
-      (== `((,y ,b) . ,rest) env)
+      (== `([,y ,b] . ,rest) env)
       (conde
        [(== y x) (== b t)]
        [(=/= y x) (lookupo x rest t)]))))
@@ -41,7 +45,7 @@ Later on we might need to actually handle the case where the variable is unbound
          [(=/= y x) (lookupo x rest t bound?)]))])))
 \end{lstlisting}
 
-So far so good: \code{lookup} only needs to add an input indicating whether the variable is bound; meanwhile for \code{lookup} we have to devise a special signal, namely \code{#f}, for the unbound case\footnote{There is technically a way to return multiple values in Scheme, but doing so would be lengthy and unconventional.}. However, a problem arises when we actually use the output signal:
+So far so good: \code{lookup} only needs an additional relation argument indicating whether the variable is bound\footnote{We could also write another relation that succeeds precisely when lookup fails, but that approach would quickly lead to a dead end, as will be seen later.}. Meanwhile, we have to devise a special signal for \code{lookup}, namely \code{#f}, to indicate the unbound case\footnote{There is technically a way to return multiple values in Scheme but it is not too common, particularly due to the verbosity of the syntax.}. However, a problem arises when we actually use the output signal. \code{case1} and \code{case1o} demonstrate essentially the same usage of \code{lookup(o)} (the main point is that these cases are analogous; it does not matter what they actually mean):
 \begin{lstlisting}
 (define case1
   (lambda (x env)
@@ -56,7 +60,7 @@ So far so good: \code{lookup} only needs to add an input indicating whether the 
      [(lookupo x env 'unbound #f) (== #f out)])))
 \end{lstlisting}
 
-Why can we not use \code{else} in the second clause? The reason is that despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, so there can be no default case. As a result, programmers must always be prepared to append extra denials in lower \code{conde} clauses. This issue gets serious when the control flow is more complex:
+Why can we not use \code{else} in the second clause? The reason is that despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, so there can be no default case. As a result, programmers must always be prepared to append extra denials in lower \code{conde} clauses. This issue gets serious when the control flow is more complex, such as \code{case2(o)}:
 
 \begin{lstlisting}
 (define case2
@@ -75,7 +79,7 @@ Why can we not use \code{else} in the second clause? The reason is that despite 
       (== #f out)])))
 \end{lstlisting}
 
-The example above is still generous, as it is usual for relations to include four or more \code{conde} clauses. The number of extra denials exhibits quadratic growth, introducing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a technique inspired by \textcite{reif}. This solution relies on \textbf{pseudo-functions}.
+This time there are three extra denials instead of just the one of \code{case1o}. The example above is still generous, as it is usual for relations to include four or more \code{conde} clauses. The number of extra denials exhibits quadratic growth, introducing opportunities for errors without any significant contribution to the meaning of the program. Fortunately, there is a simple way to deal with them using a technique inspired by \textcite{reif}. This solution relies on \textbf{pseudo-functions}.
 
 \subsection{Pseudo-function and condo}
 Pseudo-functions receive their results as arguments instead of returning them. To make sense of this concept, observe the following transformation (the "t" at the end denotes pseudo-functions, simply because it is too late to change):
@@ -90,20 +94,38 @@ Pseudo-functions receive their results as arguments instead of returning them. T
 (define bart (lambda (in) (lambda (out) (== out 'v))))
 \end{lstlisting}
 
-From a low-level point of view, a pseudo-function is a function which takes a single argument and return a goal. It can be seen that the act of returning values in functional programming is analogous to the act of unification in logic/relational programming. Moreover, a relation can be made to return whichever of its formal parameters, depending on the circumstances:
+From a low-level point of view, a pseudo-function is a function which takes a single argument and return a goal. The act of \textit{returning} a value is mimicked by the act of \textit{unifying} in logic/relational programming. Moreover, a relation can be made to return whichever of its formal parameters, depending on the circumstance:
 \begin{lstlisting}
 ;; From relation
-(define conso (lambda (a d ls) (== `(,a . ,d) ls)))
+(define conso
+  ;; (run* (a d ls) (conso x y))
+  ;; => ((_.0 _.1 (_.0 . _.1)))
+  (lambda (a d ls)
+    (== `(,a . ,d) ls)))
 ;; To pseudo-function 1
-(define cart (lambda (ls) (lambda (a) (fresh (d) (conso a d ls)))))
+(define cart
+  ;; (run* (ls a) ((cart ls) a))
+  ;; => (((_.0 . _.1) _.0))
+  (lambda (ls)
+    (lambda (a)
+      (fresh (d) (conso a d ls)))))
 ;; To pseudo-function 2
-(define cdrt (lambda (ls) (lambda (d) (fresh (a) (conso a d ls)))))
+(define cdrt
+  ;; (run* (ls d) ((cdrt ls) d))
+  ;; => (((_.0 . _.1) _.1))
+  (lambda (ls)
+    (lambda (d) (fresh (a) (conso a d ls)))))
 ;; To pseudo-function 3
-(define const (lambda (a d) (lambda (ls) (conso a d ls))))
+(define const
+  ;; (run* (a d ls) ((const a d) ls))
+  ;; => ((_.0 _.1 (_.0 . _.1)))
+  (lambda (a d)
+    (lambda (ls)
+      (conso a d ls))))
 \end{lstlisting}
-I have never encountered a situation where this is actually useful, since there is generally only one parameters deemed as the "output". It is worth noting that even though pseudo-functions act like pure functions, they can affect more than just the output. For instance, the goal \code{((cart x) a)} will always instantiate \code{x} to a pair if it is currently unknown.
+I have never encountered a situation where this is actually useful as there is generally only one parameters deemed "the output". It is worth noting that even though pseudo-functions act like pure functions, they can affect more than just the output. For instance, the goal \code{((cart x) a)} will always instantiate \code{x} to a pair if it is currently unknown.
 
-Going back to the problem of conditionals, we first define two trivial pseudo-functions \code{truet} and \code{falset}, "returning" \code{#t} and \code{#f} respectively.
+Getting back to the problem of conditionals, we first define two trivial pseudo-functions \code{truet} and \code{falset}, "returning" \code{#t} and \code{#f} respectively.
 
 \begin{lstlisting}
 (define truet (lambda () (lambda (?) (== #t ?))))
@@ -133,7 +155,8 @@ Next, we provide ways of creating more complex pseudo-functions from simpler one
 From this, \code{=/=t} can be trivially derived:
 \begin{lstlisting}
 (define =/=t
-  (lambda (x y) (negt (==t x y))))
+  (lambda (x y)
+    (negt (==t x y))))
 \end{lstlisting}
 
 Similarly, \code{conjt} (conjunction) and \code{disjt} (disjunction) are defined using macro:
@@ -201,7 +224,7 @@ Finally, we can define the goal constructor \code{condo} -- the closest relation
       [(test #f) (condo c* ...)])]
     [(_) fail]))
 \end{lstlisting}
-\code{condo} is an interesting combinator because it uses two types of objects, pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case; although it can be omitted, in which case the program fails when no clause matches. The example below demonstrates the use of \code{condo}:
+\code{condo} is an interesting combinator because it uses two types of objects: pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case; although it can be omitted, in which case the program fails when no clause matches. The example below demonstrates the use of \code{condo}:
 \begin{lstlisting}
 (run* (x y z)
   (condo
@@ -231,7 +254,7 @@ We are now able to replace \code{lookupo} with the pseudo-function \code{lookupt
            [else
             ((lookupt x rest t) bound?)]))]))))
 \end{lstlisting}
-Now the comparison between \code{case2} and \code{case2o} does not look so bad anymore.
+Now, the comparison between \code{case2} and \code{case2o} does not look so bad anymore.
 \begin{lstlisting}
 (define case2
   (lambda (x y env)
@@ -249,7 +272,7 @@ Now the comparison between \code{case2} and \code{case2o} does not look so bad a
        [else (== #f out)]))))
 \end{lstlisting}
 
-Some readers may already be convinced to convert all of their relations to pseudo-functions. However, there are still some issues to address. Although hiding the control flow is great for readability, the downside is that there is no simple way to see what is done behind the layer of abstraction. As a result, it becomes easier to accidentally change the behavior of programs. Take for example this goal using \code{condo}:
+Some readers may already be in the middle of converting all of their relations to pseudo-functions. However, there are still some issues to address. Although hiding the control flow is great for readability, the downside is that there is no simple way to see what is done behind the layer of abstraction. As a result, it becomes easier to accidentally change the behavior of programs. Take for example this goal using \code{condo}:
 \begin{lstlisting}
 (fresh (x y)
   (condo

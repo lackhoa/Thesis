@@ -7,10 +7,17 @@ Despite its name, Prolog was not just about logic and its users generally do not
 
 Technically speaking, miniKanren is not a language with its own compiler or interpreter. It is instead a family of languages embedded in a great variety of other host languages. This thesis uses the Scheme implementation since it is the canonical version mentioned in almost every research paper written on the language. Also, Scheme's macro makes the syntax less clunky and more natural to read and write, which helps keep the text short.
 
-\ifthesis This thesis aims to provide techniques for writing conditionals in miniKanren. I also propose a method for analyzing the correctness of pre-existing programs as well as automatically generating new ones using conditionals. The main component of this solution involves a new mini-language named \textbf{staticKanren}, whose implementation is available at \url{https://github.com/lackhoa/staticKanren}.
+\ifthesis This thesis aims to provide techniques for writing conditionals in miniKanren. I also propose a method for analyzing the correctness of pre-existing programs as well as automatically generating new ones using conditionals. The main component of this solution involves a new mini-language named \textbf{staticKanren} whose implementation is available at \url{https://github.com/lackhoa/staticKanren}.
 
 \else Firewalls are very important for the security of organizations. However, undocumented firewall rules are not easy to understand and test. For that purpose, this thesis presents a firewall analysis assistant in miniKanren. Much work has actually been done on the subject, the most similar to mine was done by Eeronent and Zitting (\cite{Eronen2001AnES}). Their software is written in Prolog and is much more complex than the approach in this report.\fi
 
 The layout of my thesis is as follow: Section \ref{prelim} gives a brief introduction to the syntax and semantics of miniKanren.
 \ifthesis Section \ref{reif} defines conditionals using pseudo-functions and demonstrates their use in miniKanren. Section \ref{static} introduces staticKanren, its implementation and its applications related to conditionals.
+
+Readers are recommended to use a text editor with parentheses highlighting for the code. Code listings and likewise programming keywords are written in \code{monospace} using ASCII-only characters. \textbf{Boldface} indicates new concepts and emphasis is achieved with \textit{italic}.
+
+There will be rudimentary examples of the relations given throughout the text to help readers who are not seasoned miniKanren users. However, it is useful to get familiar with miniKanren first before reading this thesis. There is also a brief introduction to miniKanren in section \ref{prelim} but it relates to the technical details of later section and is by no means comprehensive or complete.
+
+There are many stylistic choices in Scheme programming that this thesis adopts. The shorthand form for function definition is not used: we write \code{(define foo (lambda (x) x))} instead of \code{(define (foo x) x)}. The functions \code{cons} and \code{list} are never used as lists are always created with quasi-quotation. Fixed structures (i.e. lists whose number of elements are fixed) are surrounded with square brackets instead of parentheses, code and data alike. Finally, associations will always be proper lists instead of pairs, e.g. we write \code{([x 1] [y (a b)])} instead of \code{([x 1] [y a b])}.
+
 \else Section \ref{firewall} introduces a prototype of a firewall analysis assistant in miniKanren.\fi

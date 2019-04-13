@@ -1,2 +1,4 @@
-I need examples, and explain those
-More example of the cases
++ More examples and explanations: Keep examples under relations
++ Show pictures demonstrating layers of au substitution
++ More examples under relations
++ See what Pia has to say

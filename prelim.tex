@@ -2,8 +2,8 @@
 \label{prelim}
 This section gives a brief overview to miniKanren.
 A complete introduction to the language is presented in \textcite{reasoned}.
-\textcite{byrdphd} gives an excellent dissertation on the implementation details, but for readers who are either interested in a more fundamental treatment of logic programming, or just find Scheme macros difficult to comprehend, the implementation in \textcite{micro} is perhaps a more suitable.
-Additionally, the website \url{http://minikanren.org/} keeps up with the latest implementations of the language and other related resources.
+\textcite{byrdphd} gives an excellent dissertation on the implementation details, but for readers who are either interested in a more fundamental treatment of logic programming, or just find Scheme macros difficult to comprehend, the implementation in \textcite{micro} is perhaps more suitable.
+The website \url{http://minikanren.org/} keeps up with the latest implementations of the language and other related resources. Alas, this thesis assume familiarity with Scheme, to which the introduction can be found in \textcite{sicp} and \textcite{tspl4}.
 
 \subsection{Basic concepts of miniKanren}
 As mentioned earlier miniKanren is not a standalone programming language but an embedded structure inside of a language (in our case, Scheme). The language components from the low-level perspective include:
@@ -13,7 +13,7 @@ As mentioned earlier miniKanren is not a standalone programming language but an 
 \item \textbf{States} (also \textbf{packages}): States are the most important ingredient, representing all logical assertions in the program at the moment.
 \item \textbf{Goal}: A goal is a function mapping a state to a stream of states. Goals should only be created by \textbf{goal constructors}, as will be discussed soon.
 \item \textbf{Relation}: Relations are simply Scheme functions that return goals.
-\item \textbf{Program}: A miniKanren program consists a goal wrapped inside of a \code{run} form which, with the help of zero or more relation definitions, outputs a list of answers, which can be thought of as normalized and pretty-printed states.
+\item \textbf{Program}: Every miniKanren program consists a goal wrapped inside of a \code{run} form which, with the help of zero or more relation definitions, outputs a list of answers, which can be thought of as normalized and pretty-printed states.
 \end{itemize}
 
 However, we can also analyze the language from a high-level point of view in terms of its primitives, its means of combination, and its means of abstraction (\cite[359]{sicp}). miniKanren's primitives are \textbf{logical constraints} and a special form to create and bind new logic variables. Its two means of combination are conjunction and disjunction. Finally, its only means of abstraction is relation.
@@ -24,14 +24,14 @@ However, we can also analyze the language from a high-level point of view in ter
 (run <answer-count> (<query-var-1> <query-var-2> ...) <goal>)
 \end{lstlisting}
 
-Additionally, users can use this form to get back all answers:
+Additionally, users can use this form to get back all answers regardless of how many there are:
 \begin{lstlisting}
 (run* (<query-var-1> <query-var-2> ...) <goal>)
 \end{lstlisting}
 
 \subsection{Core primitives: equality and fresh variable creation}
 The most important goal constructor (primitive constraint) is \code{==}.
-Simply put, \code{==} unifies two terms, declaring them to be equal. More precisely, \code{==} receives a state and returns a stream. This stream can either contain one state where the two terms become their most general unifier, or be empty when they cannot be unified.
+Simply put, \code{==} unifies (declares equality of) two terms. More precisely, \code{==} receives a state and returns a stream. This stream can either contain one state where the two terms become their most general unifier, or be empty when they cannot be unified.
 
 Actually, \code{==} is the only constraint in the what is called the "core" of miniKanren. Even with only this constraint, the language is already Turing-complete. However, none but the simplest programs can be written conveniently using \code{==}.
 
