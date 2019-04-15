@@ -6,20 +6,19 @@ A complete introduction to the language is presented in \textcite{reasoned}.
 The website \url{http://minikanren.org/} keeps up with the latest implementations of the language and other related resources. Alas, this thesis assume familiarity with Scheme, to which the introduction can be found in \textcite{sicp} and \textcite{tspl4}.
 
 \subsection{Basic concepts of miniKanren}
-As mentioned earlier miniKanren is not a standalone programming language but an embedded structure inside of a language (in our case, Scheme). The language components from the low-level perspective include:
+As mentioned earlier miniKanren is not a standalone programming language but an embedded structure inside of a language (in our case, Scheme). Language components from the low-level perspective include:
 \begin{itemize}
 \item \textbf{Logic variables}: It is important to distinguish these from naming variables. Unbound naming variables always mean that an error has occurred. In contrast, unbound logic variables are perfectly valid objects. From here on, variable means logic variable unless stated otherwise.
-\item \textbf{Streams}: Streams (\cite{sicp}) are simply lazy lists that will yield values only when we ask for them. Because of this laziness, we can represent an infinite number of answers with finite computational resources.
-\item \textbf{States} (also \textbf{packages}): States are the most important ingredient, representing all logical assertions in the program at the moment.
+\item \textbf{Streams}: Streams (\cite{sicp}) are simply lazy lists that will yield values only when we ask for them. This laziness can be used to represent an infinite number of answers with finite computational resources.
+\item \textbf{States} (also \textbf{packages}): State is the most important object in miniKanren. A state is what keeps track of all logical assertions made by the program.
 \item \textbf{Goal}: A goal is a function mapping a state to a stream of states. Goals should only be created by \textbf{goal constructors}, as will be discussed soon.
 \item \textbf{Relation}: Relations are simply Scheme functions that return goals.
-\item \textbf{Program}: Every miniKanren program consists a goal wrapped inside of a \code{run} form which, with the help of zero or more relation definitions, outputs a list of answers, which can be thought of as normalized and pretty-printed states.
+\item \textbf{Program}: Every miniKanren program consists a goal wrapped inside of the \code{run} form which, with the help of zero or more relation definitions, outputs a list of answers, which can be thought of as normalized and pretty-printed states.
 \end{itemize}
 
-However, we can also analyze the language from a high-level point of view in terms of its primitives, its means of combination, and its means of abstraction (\cite[359]{sicp}). miniKanren's primitives are \textbf{logical constraints} and a special form to create and bind new logic variables. Its two means of combination are conjunction and disjunction. Finally, its only means of abstraction is relation.
+We can also analyze the language from a high-level point of view in terms of its primitives, its means of combination, and its means of abstraction (\cite[359]{sicp}). miniKanren's primitives are \textbf{logical constraints} and a special form to create and bind new logic variables. Its two means of combination are conjunction and disjunction. Its only means of abstraction is relation.
 
 \code{run} is the interface converting goals to programs which produce answers. To do this, \code{run} catches the stream of states produced by the goal and turns it into a list of specified length. In the process, it also converts these states into a more readable format -- a process called \textbf{reification} -- which also highlights the values of \textbf{query variables}. We will not describe precisely what the format produced by reification is, but it can easily be intuitively grasped as we introduce more examples. Meanwhile, readers need only know that \code{run} has the following syntax:
-\lstset{language=Scheme, showstringspaces=false, breaklines=true}
 \begin{lstlisting}
 (run <answer-count> (<query-var-1> <query-var-2> ...) <goal>)
 \end{lstlisting}
@@ -56,9 +55,9 @@ $\Rightarrow$ \code{()}
 
 In the first and second example, the two arguments to \code{==} are already equal, hence the program returns one successful answer. In the third example, the two terms \code{x} and \code{y} can never be unified and the program returns the empty list indicating that there is no possible answer. In these cases, \code{==} is only used to compare terms. \code{==} becomes a lot more interesting when variables are involved.
 
-To make logic variables, we must use the goal constructor (fresh variable creator) \code{fresh}. \code{fresh} is perhaps the most complex goal constructor in miniKanren, partly because it ifs also a special syntactic form. Operationally, \code{fresh} creates one or more fresh logic variables. Syntactically, \code{fresh} also bind these newly created variables to Scheme identifiers within its body.
+To make logic variables, we must use the goal constructor (fresh variable creator) \code{fresh}. \code{fresh} is perhaps the most complex goal constructor in miniKanren, partly because it ifs also a special syntactic form. Operationally, \code{fresh} creates one or more fresh logic variables. Syntactically, \code{fresh} also bind these newly created variables to identifiers within its body.
 
-Let us take a look at some examples.
+Below are examples involving \code{fresh}.
 
 \begin{lstlisting}
 (run* (q)
@@ -79,7 +78,7 @@ $\Rightarrow$ \code{(x)}
 
 The first program introduces a new logic variable \code{v}, which is then unified with both the symbol \code{x} and the query variable \code{q} (the order does not matter). The only answer returned is the value of \code{q}, which is the symbol \code{x}. In the second program, two variables are introduced. Since \code{u} is unified with \code{v} and the rest of the program is the same, the answer is also the same.
 
-We cannot refer to a logic variable not introduced by, or not in the body of \code{fresh}. For example, this call fails.
+Unlike Prolog, we cannot refer to a logic variable not introduced by, or not in the body of \code{fresh}. For example, this call fails.
 \begin{lstlisting}
 (run* (q)
   (fresh (v)
@@ -120,7 +119,7 @@ A simple principle to keep in mind is that \textit{information must be preserved
 
 \subsection{Goal combinators: disjunction and conjunction}
 Next, we take a look at the goal constructor (goal disjunction combinator) \code{conde}.
-If one needs to point out exactly one thing that makes logic programming seem magical, disjunction would be a good answer. Every example we have seen returns either zero or one answer. With \code{conde}, we can start returning two or more answers. The \code{conde} form consists of a number of \textbf{clauses}, each contain a number of goals, for example:
+If one needs to point out exactly one thing that makes logic programming seem magical, disjunction would be a good answer. Every example we have seen returns either zero or one answer. With \code{conde}, we can start returning two or more answers. The \code{conde} form consists of a number of \textbf{clauses}, each containing a number of goals, for example:
 
 \begin{lstlisting}
 (run* (q)
@@ -132,7 +131,7 @@ $\Rightarrow$ \code{((x y))}
 
 As promised, this program actually returns two answers. We can view \code{conde} as creating two "parallel universes" where \code{q} is unified with \code{x} in the first and \code{y} in the second.
 
-The final goal constructor (goal conjunction combinator) of core miniKanren... does not actually exist. However, we have already encountered conjunction multiple times in previous examples. Intuitively, conjunction is implicitly used whenever two or more goals are written in series in the body of \code{run}, \code{fresh} or \code{conde} clauses. Each of the examples below returns \code{()} due to value conflict.
+The final goal constructor (goal conjunction combinator) of core miniKanren... does not actually exist. However, we have already encountered conjunction multiple times in previous examples. Intuitively, conjunction is implicit whenever two or more goals are written in series in the bodies of \code{run}, \code{fresh} or \code{conde} clauses. Each of the examples below returns \code{()} due to value conflict.
 \begin{lstlisting}
 (run* (q)
   (conde
@@ -159,7 +158,7 @@ The introduction of miniKanren's core should be complete with \code{==}, \code{f
 \end{lstlisting}
 $\Rightarrow$ \code{((_.0 (=/= ((_.0 5)))))}
 
-The program above returns one answer, stating that while \code{q} is unknown, it must not be made equivalent to \code{5}. If we happen to do that, the program fails:
+The program above returns one answer, stating that while \code{q} is unknown, it must not be made equivalent to \code{5}. If that happens to be the case, the program fails:
 \begin{lstlisting}
 (run* (q) (=/= 5 q) (== q 5))
 \end{lstlisting}
