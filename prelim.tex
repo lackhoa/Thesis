@@ -1,29 +1,28 @@
-\section{Preliminaries}
+\section{PRELIMINARIES}
 \label{prelim}
 This section gives a brief overview to miniKanren.
 A complete introduction to the language is presented in \textcite{reasoned}.
-\textcite{byrdphd} gives an excellent dissertation on the implementation details, but for readers who are either interested in a more fundamental treatment of logic programming, or just find Scheme macros difficult to comprehend, the implementation in \textcite{micro} is perhaps more suitable.
-The website \url{http://minikanren.org/} keeps up with the latest implementations of the language and other related resources. Alas, this thesis assume familiarity with Scheme, to which the introduction can be found in \textcite{sicp} and \textcite{tspl4}.
+\textcite{byrdphd} gives an excellent dissertation on the implementation details, but for readers who are either interested in a more fundamental treatment of logic programming, or just find Scheme macros difficult to comprehend, the implementation in \textcite{micro} is perhaps more suitable. Alas, this thesis assume familiarity with Scheme, to which the introduction can be found in \textcite{sicp} and \textcite{tspl4}.
 
 \subsection{Basic concepts of miniKanren}
-As mentioned earlier miniKanren is not a standalone programming language but an embedded structure inside of a language (in our case, Scheme). Language components from the low-level perspective include:
+As mentioned earlier miniKanren is not a standalone programming language but an embedded structure inside a language (in our case, Scheme). Language components from the low-level perspective include the following:
 \begin{itemize}
 \item \textbf{Logic variables}: It is important to distinguish these from naming variables. Unbound naming variables always mean that an error has occurred. In contrast, unbound logic variables are perfectly valid objects. From here on, variable means logic variable unless stated otherwise.
-\item \textbf{Streams}: Streams (\cite{sicp}) are simply lazy lists that will yield values only when we ask for them. This laziness can be used to represent an infinite number of answers with finite computational resources.
+\item \textbf{Streams}: Streams are simply lazy lists that will yield values only when we ask for them (\cite{sicp}). This laziness can be used to represent an infinite number of answers with finite computational resources.
 \item \textbf{States} (also \textbf{packages}): State is the most important object in miniKanren. A state is what keeps track of all logical assertions made by the program.
-\item \textbf{Goal}: A goal is a function mapping a state to a stream of states. Goals should only be created by \textbf{goal constructors}, as will be discussed soon.
+\item \textbf{Goal}: A goal is a function mapping a state to a stream of states. Goals should only be created by \textbf{goal constructors}, as will be discussed below.
 \item \textbf{Relation}: Relations are simply Scheme functions that return goals.
-\item \textbf{Program}: Every miniKanren program consists a goal wrapped inside of the \code{run} form which, with the help of zero or more relation definitions, outputs a list of answers, which can be thought of as normalized and pretty-printed states.
+\item \textbf{Program}: Every miniKanren program consists of a goal wrapped inside of the \code{run} form which, with the help of zero or more relation definitions, outputs a list of answers, which can be thought of as normalized and pretty-printed states.
 \end{itemize}
 
 We can also analyze the language from a high-level point of view in terms of its primitives, its means of combination, and its means of abstraction (\cite[359]{sicp}). miniKanren's primitives are \textbf{logical constraints} and a special form to create and bind new logic variables. Its two means of combination are conjunction and disjunction. Its only means of abstraction is relation.
 
-\code{run} is the interface converting goals to programs which produce answers. To do this, \code{run} catches the stream of states produced by the goal and turns it into a list of specified length. In the process, it also converts these states into a more readable format -- a process called \textbf{reification} -- which also highlights the values of \textbf{query variables}. We will not describe precisely what the format produced by reification is, but it can easily be intuitively grasped as we introduce more examples. Meanwhile, readers need only know that \code{run} has the following syntax:
+\code{run} is the interface converting goals to programs which produce answers. To do this, \code{run} catches the stream of states produced by the goal and turns it into a list of specified length. In the process, it also converts these states into a more readable format -- a process called \textbf{reification} -- which also highlights the values of \textbf{query variables}. This thesis will not describe precisely what the format produced by reification is, but it can be intuitively grasped when more examples are introduced. Meanwhile, readers need only know that \code{run} has the following syntax:
 \begin{lstlisting}
 (run <answer-count> (<query-var-1> <query-var-2> ...) <goal>)
 \end{lstlisting}
 
-Additionally, users can use this form to get back all answers regardless of how many there are:
+Additionally, users can use the following form to get back all answers regardless of how many there are:
 \begin{lstlisting}
 (run* (<query-var-1> <query-var-2> ...) <goal>)
 \end{lstlisting}
@@ -34,7 +33,7 @@ Simply put, \code{==} unifies (declares equality of) two terms. More precisely, 
 
 Actually, \code{==} is the only constraint in the what is called the "core" of miniKanren. Even with only this constraint, the language is already Turing-complete. However, none but the simplest programs can be written conveniently using \code{==}.
 
-Below are some example usage of \code{==}.
+The examples below introduce some uses of \code{==}.
 \begin{lstlisting}
 (run* (q)
   (== 'x 'x))
@@ -53,11 +52,11 @@ $\Rightarrow$ \code{(_.0)}
 \end{lstlisting}
 $\Rightarrow$ \code{()}
 
-In the first and second example, the two arguments to \code{==} are already equal, hence the program returns one successful answer. In the third example, the two terms \code{x} and \code{y} can never be unified and the program returns the empty list indicating that there is no possible answer. In these cases, \code{==} is only used to compare terms. \code{==} becomes a lot more interesting when variables are involved.
+In the first and second examples, the two arguments to \code{==} are already equal. Hence the program returns one successful answer. In the third example, the two terms \code{x} and \code{y} can never be unified and the program returns the empty list indicating that there is no possible answer. In these cases, \code{==} is only used to compare terms. \code{==} becomes a lot more interesting when variables are involved.
 
-To make logic variables, we must use the goal constructor (fresh variable creator) \code{fresh}. \code{fresh} is perhaps the most complex goal constructor in miniKanren, partly because it ifs also a special syntactic form. Operationally, \code{fresh} creates one or more fresh logic variables. Syntactically, \code{fresh} also bind these newly created variables to identifiers within its body.
+To make logic variables, we must use the goal constructor (fresh variable creator) \code{fresh}. \code{fresh} is perhaps the most complex goal constructor in miniKanren, partly because it is also a special syntactic form. Operationally, \code{fresh} creates one or more fresh logic variables. Syntactically, \code{fresh} also bind these newly created variables to identifiers within its body.
 
-Below are examples involving \code{fresh}.
+Let us take a look at some examples involving \code{fresh}:
 
 \begin{lstlisting}
 (run* (q)
@@ -76,9 +75,9 @@ $\Rightarrow$ \code{(x)}
 \end{lstlisting}
 $\Rightarrow$ \code{(x)}
 
-The first program introduces a new logic variable \code{v}, which is then unified with both the symbol \code{x} and the query variable \code{q} (the order does not matter). The only answer returned is the value of \code{q}, which is the symbol \code{x}. In the second program, two variables are introduced. Since \code{u} is unified with \code{v} and the rest of the program is the same, the answer is also the same.
+The first program introduces a new logic variable \code{v} which is then unified with both the symbol \code{x} and the query variable \code{q} (the order does not matter). The only answer returned is the value of \code{q}, which is the symbol \code{x}. In the second program, two variables are introduced. Since \code{u} is unified with \code{v} and the rest of the program is the same, the answer is also the same.
 
-Unlike Prolog, we cannot refer to a logic variable not introduced by, or not in the body of \code{fresh}. For example, this call fails.
+Unlike Prolog, we cannot refer to a logic variable not introduced by, or not in the body of \code{fresh}. For example, the call below fails.
 \begin{lstlisting}
 (run* (q)
   (fresh (v)
@@ -88,7 +87,7 @@ Unlike Prolog, we cannot refer to a logic variable not introduced by, or not in 
   (== q v)  ; Error: variable v is unbound
 )
 \end{lstlisting}
-The term "variable" in the error messages refers to naming variables, not logic variables. Technically speaking, logic variables need not even have names. When talking about "the variable \code{v}", we actually mean "the logic variable bound to the naming variable \code{v}". This last example showcases lexical scope created by \code{fresh}.
+The term "variable" in the error messages refers to naming variables, not logic variables. Technically speaking, logic variables need not even have names. When talking about "the variable \code{v}", we actually mean "the logic variable bound to the naming variable \code{v}". The last example below showcases lexical scope created by \code{fresh}.
 \begin{lstlisting}
 (run* (q)
   (fresh (v)
@@ -101,25 +100,25 @@ The term "variable" in the error messages refers to naming variables, not logic 
 \end{lstlisting}
 $\Rightarrow$ \code{()}
 
-This call fails because \code{q} was unified to two logic variables having two different values; they are just happen to be bound to the same naming variable \code{v}. The first \code{v} is introduced by the outer \code{fresh}, the second \code{v} is introduced by the inner \code{fresh} and \textbf{shadows} the outer \code{v}. Although shadowing seems to be a confusing thing in this example, it becomes useful especially when writing larger programs.
+This call fails because \code{q} was unified to two logic variables having two different values. They are just happen to be bound to the same naming variable \code{v}. The first \code{v} is introduced by the outer \code{fresh}, the second \code{v} is introduced by the inner \code{fresh} and \textbf{shadows} the outer \code{v}. Although shadowing seems to be a confusing thing in this example, it becomes useful especially when writing larger programs.
 
-For our purpose, it is important to demystify a little bit the answer format returned by miniKanren (more precisely, by \code{run}). First, unknown variables declared to be the same (e.g. by \code{==}) always have the same index, for instance:
+For our purpose, it is important to demystify the answer format returned by miniKanren (more precisely, by \code{run}). First, unknown variables declared to be the same (e.g. by \code{==}) always have the same index, for instance:
 \begin{lstlisting}
 (run* (p q r) (== p q))
 \end{lstlisting}
 $\Rightarrow$ \code{((_.0 _.0 _.1))}
 
-Second, if a variable is tied to a value then the value will be used instead of the form \code{_.n}. Furthermore, if a variable is sure to be a pair then that fact is also made known in the answer, for example:
+Second, if a variable is tied to a value, the value will be used instead of the form \code{_.n}. Furthermore, if a variable is sure to be a pair, that fact is also made known in the answer, as the following example shows:
 \begin{lstlisting}
 (run* (q) (fresh (x y) (== `(,x ,y) q)))
 \end{lstlisting}
 $\Rightarrow$ \code{((_.0 _.1))}
 
-A simple principle to keep in mind is that \textit{information must be preserved during reification}. The only lost information, however, are the names of logic variables. The reason for that is due to the name conflict phenomenon mentioned earlier; that is, if we were to simply represent unknown variables by their names, then there would be no way of telling whether two variables were really declared to have the same value or they just happen to bear the same name. As we shall see later, staticKanren uses a simple technique to recover names of unbound variables using birthdate tags.
+A simple principle to keep in mind is that \textit{information must be preserved during reification}. The only lost information, however, is the names of logic variables. The reason for that is due to the name conflict phenomenon mentioned earlier; that is, if we were to simply represent unknown variables by their names, there would be no way of telling whether two variables were really declared to have the same value or they just happen to bear the same name. As we shall see later, staticKanren uses a simple technique to recover names of unbound variables using birthdate tags.
 
 \subsection{Goal combinators: disjunction and conjunction}
 Next, we take a look at the goal constructor (goal disjunction combinator) \code{conde}.
-If one needs to point out exactly one thing that makes logic programming seem magical, disjunction would be a good answer. Every example we have seen returns either zero or one answer. With \code{conde}, we can start returning two or more answers. The \code{conde} form consists of a number of \textbf{clauses}, each containing a number of goals, for example:
+If one needs to point out exactly one thing that makes logic programming seem magical, disjunction would be a good answer. Every example above returns either zero or one answer. With \code{conde}, we can start returning two or more answers. The \code{conde} form consists of a number of \textbf{clauses}, each containing a number of goals, for example:
 
 \begin{lstlisting}
 (run* (q)
@@ -131,7 +130,7 @@ $\Rightarrow$ \code{((x y))}
 
 As promised, this program actually returns two answers. We can view \code{conde} as creating two "parallel universes" where \code{q} is unified with \code{x} in the first and \code{y} in the second.
 
-The final goal constructor (goal conjunction combinator) of core miniKanren... does not actually exist. However, we have already encountered conjunction multiple times in previous examples. Intuitively, conjunction is implicit whenever two or more goals are written in series in the bodies of \code{run}, \code{fresh} or \code{conde} clauses. Each of the examples below returns \code{()} due to value conflict.
+The final goal constructor (goal conjunction combinator) of core miniKanren does not actually exist. However, we have already encountered conjunction multiple times in the previous examples. Intuitively, conjunction is implicit whenever two or more goals are written in series in the bodies of \code{run}, \code{fresh} or \code{conde} clauses. Each of the examples below returns \code{()} due to value conflict.
 \begin{lstlisting}
 (run* (q)
   (conde
@@ -152,23 +151,23 @@ The final goal constructor (goal conjunction combinator) of core miniKanren... d
 \end{lstlisting}
 
 \subsection{Disequality}
-The introduction of miniKanren's core should be complete with \code{==}, \code{fresh}, \code{conde} and conjunction. However, we will also take a look at the most important extra constraint \code{=/=}. As the name suggest, \code{=/=} declares \textbf{disequality} of two miniKanren terms:
+The introduction of miniKanren's core should be complete with \code{==}, \code{fresh}, \code{conde} and conjunction. However, we will also take a look at the most important extra constraint \code{=/=}. As the name suggest, \code{=/=} declares \textbf{disequality} of two miniKanren terms. A small example is given below:
 \begin{lstlisting}
 (run* (q) (=/= 5 q))
 \end{lstlisting}
 $\Rightarrow$ \code{((_.0 (=/= ((_.0 5)))))}
 
-The program above returns one answer, stating that while \code{q} is unknown, it must not be made equivalent to \code{5}. If that happens to be the case, the program fails:
+The program above returns one answer, stating that while \code{q} is unknown, it must not be made equivalent to \code{5}. If that happens to be the case, the program fails, as shown in the following case:
 \begin{lstlisting}
 (run* (q) (=/= 5 q) (== q 5))
 \end{lstlisting}
 $\Rightarrow$ \code{()}
 
-To better understand answers containing disequalities, a more complex example is needed:
+To better understand answers containing disequalities, a more complex example is needed, such as the following:
 \begin{lstlisting}
 (run* (q p r) (=/= `(,q ,p) `(1 2)) (=/= p r))
 \end{lstlisting}
 $\Rightarrow$
 \code{(((_.0 _.1 _.2) (=/= ((_.0 1) (_.1 2)) ((_.1 _.2)))))}
 
-We see that each disequality constraint store, as presented in the answers, is a list of mini anti-substitution lists. Each anti-substitution list in turns contains disassociations of the form \code{(x v)} where \code{x} must be a variable. Failure happens when all disassociated terms in one anti-substitution list are equal. In plain English, the answer above says that \code{p} is different from \code{r} and that either \code{q} must be different from \code{1} or \code{p} must be different from \code{2}, which is exactly what we declared in the program.
+The above answer shows see that each disequality constraint store, as presented in the answers, is a list of mini anti-substitution lists. Each anti-substitution list, in turn, contains disassociations of the form \code{(x v)} where \code{x} must be a variable. Failure happens when all disassociated terms in one anti-substitution list are equal. In plain English, the answer above says that \code{p} is different from \code{r} and that either \code{q} must be different from \code{1} or \code{p} must be different from \code{2}, which is exactly what we declared in the program.

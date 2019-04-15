@@ -1,16 +1,16 @@
-\section{Acknowledgements}
-I thank my supervisor Timo Hynninen for his advice at the start of the process. Additionally, I am grateful for William Byrd for spending time answering my questions during the course of writing. The topic idea is largely thanks to him.
+\section{ACKNOWLEDGEMENTS}
+I thank my supervisor Timo Hynninen for his advice at the start of the process. Additionally, I am grateful for William Byrd for spending time answering my questions during the course of writing. The idea for the topic of this thesis is largely thanks to him.
 
-\section{Conclusion}
+\section{CONCLUSION}
 \ifthesis
-The goal of this thesis was to find a way of writing conditionals in miniKanren. This resulted in the following contributions:
+The goal of this thesis was to find a way to write conditionals in miniKanren. This resulted in the following contributions:
 \begin{enumerate}
 \item A technique of using pseudo-functions to express conditionals in miniKanren.
 \item The implementation of a miniKanren variant, staticKanren, to help extract certain modes of programs.
 \item A way of reformatting staticKanren's answers to a more human-like style.
 \end{enumerate}
 
-We learned along the way the important fact that while conditionals can be easily expressed with \code{condo}, the behavior of existing programs are almost impossible to preserve. The best solution, as presented in this thesis, is to specify a more compact, Scheme-like version with \code{condo}, run it through staticKanren for normalization, then manually modify the generated result if needed for the final version.
+We learned along the way the important fact that while conditionals can be easily expressed with \code{condo}, the behavior of existing programs are almost impossible to preserve. The best solution, as presented in this thesis, is to specify a more compact, Scheme-like version with \code{condo}, run it through staticKanren for normalization and then manually modify the generated result, if needed, for the final version.
 
 While this solution is not ideal due to the additional framework in staticKanren, I believe that it is a necessary price to pay for the mechanization of negation while retaining user flexibility. An alternative approach is to use constructive negation (\cite{chan}) but due to the workload required it is not suitable for a Bachelor thesis. Besides, creating yet another version of miniKanren would dilute the already diluted attention of newcomers since there are so many versions available at the moment.
 

@@ -1,37 +1,39 @@
-\section{staticKanren}\label{static}
-This section introduces staticKanren, a language designed to analyze miniKanren programs. We first step through a few simple examples in section \ref{static_intro} to develop intuition for the detailed implementation in section \ref{static_imp}. Section \ref{S} and \ref{au} demonstrate some applications of the language.
+\section{STATICKANREN}\label{static}
+This section introduces staticKanren, a language designed to analyze miniKanren programs. We first step through a few simple examples in Section \ref{static_intro} to develop intuition for the detailed implementation in Section \ref{static_imp}. Sections \ref{S} and \ref{au} demonstrate some applications of the language.
 
 \subsection{Introductory examples}\label{static_intro}
-On the surface, staticKanren was designed to look as close to miniKanren as possible; however there are still some fundamental differences. Unlike miniKanren, staticKanren cannot deal with infinite answer streams. In fact, staticKanren programs can only return all answers using \code{run*} as there is no point withholding already-computed answers. On one hand, this is unfortunate since we cannot write non-trivial recursive relations as-is. But on the other hand, this also gives the language a simpler implementation.
+On the surface, staticKanren was designed to look as close to miniKanren as possible. However, there are still some fundamental differences. Unlike miniKanren, staticKanren cannot deal with infinite answer streams. In fact, staticKanren programs can only return all answers using \code{run*}, as there is no point withholding already-computed answers. On one hand, this is unfortunate since we cannot write non-trivial recursive relations as-is. But on the other hand, this also gives the language a simpler implementation.
 
-staticKanren offers only three primitives constraints: equality, disequality and \textbf{fake}. The first two retain their syntax and semantics from miniKanren, whereas the third is a new addition to emulate recursive relations. There is no reason not to include more primitive constraints as the more knowledge staticKanren has, the better answers it can return. However, adding other constraints would be a distraction from our goal, so we only include disequality because it plays such an important role in many relations.
+staticKanren offers only three primitive constraints: equality, disequality and \textbf{fake}. The first two retain their syntax and semantics from miniKanren, whereas the third is a new addition to emulate recursive relations. There is no reason not to include more primitive constraints. The more knowledge staticKanren has, the better answers it can return. However, adding other constraints would be a distraction from our goal, hence we only include disequality because it plays such an important role in many relations.
 
-The core idea of staticKanren is the observation that relational programs' answers are themselves relational programs. And because answers are interpreted as programs, the language must treat variable names more seriously. For example: ($\Rightarrow$ by default means "evaluating under staticKanren" in this section)
+The core idea of staticKanren is the observation that relational programs' answers are themselves relational programs. And because answers are interpreted as programs, the language must treat variable names more seriously, as seen below:
 
 \begin{lstlisting}
 (run* (q p) (== q 4))
 \end{lstlisting}
 $\Rightarrow$ \code{(((4 #(p 0)) () ()))}
 
-If the above program were run under miniKanren instead, the answer would have been \code{((4 _.0))}. The variable \code{p} remains unknown in the answer, so it gets to keep its name. Remember that terms of the form \code{#(...)} are vectors, thus the variable bound to \code{p} is the vector \code{#(p 0)}\footnote{Variables in miniKanren have always been vectors, but we cannot not see that because variables are always reified to symbols at the end.} (let us ignore the number on the right for now). Besides the walked query, staticKanren always returns two additional constraint stores, one for disequalities and one for fake constraints. Hence, every answer has the normal shape of a three-element list. The next example demonstrates how the language deals with name conflict:
+It should be noted that $\Rightarrow$ by default means "evaluating under staticKanren" in this section. If the above program were run under miniKanren instead, the answer would have been \code{((4 _.0))}. The variable \code{p} remains unknown in the answer, so it gets to keep its name. Remember that terms of the form \code{#(...)} are vectors, thus the variable bound to \code{p} is the vector \code{#(p 0)}\footnote{Variables in miniKanren have always been vectors, but we cannot not see that because variables are always reified to symbols at the end.} (let us ignore the number on the right for now). Besides the walked query, staticKanren always returns two additional constraint stores, one for disequalities and one for fake constraints. Therefore, every answer has the normal shape of a three-element list, which is good for computers and may not be intuitive for humans. The next example demonstrates how the language deals with name conflict:
 
 \begin{lstlisting}
 (run* (q a) (fresh (a d) (== q `(,a . ,d))))
 \end{lstlisting}
 $\Rightarrow$ \code{((((#(a 1) . #(d 1)) #(a 0)) () ()))}
 
-The same program under miniKanren would return \code{(((_.0 . _.1) _.2))} instead. There are two variables having the same name \code{a}. staticKanren can still distinguish these two variables by their \textbf{birthdate} (the number shown on the right). Meanwhile, miniKanren sidesteps this problem completely by introducing a new name for every unbound variable appearing in the answer. It is perhaps a subjective matter to debate which representation is better, but there is one at least one theoretical problem avoided by the new approach\footnote{This example was even mentioned in one of the online miniKanren's Uncourse Hangouts organized by William Byrd.}:
+The same program under miniKanren would return \code{(((_.0 . _.1) _.2))} instead. There are two variables having the same name \code{a}. staticKanren can still distinguish these two variables by their \textbf{birthdate} (the number shown on the right). Meanwhile, miniKanren sidesteps this problem completely by introducing a new name for every unbound variable appearing in the answer. It is perhaps a subjective matter to debate which representation is better, but there is at least one theoretical problem avoided by the new approach\footnote{This example was even mentioned in one of the online miniKanren's Uncourse Hangouts organized by William Byrd.}:
 
 \begin{lstlisting}
 (run* (q p) (== q '_.0))
 \end{lstlisting}
 $\Rightarrow$ \code{(((_.0 #(p 0)) () ()))}
 
-The same program under miniKanren would return \code{((_.0 _.0))}!. And because two Scheme symbols are the same iff they look the same, there is no way to distinguish \code{p} and \code{q} in that case, even from the computer's perspective. The last example demonstrates fake constraints. It is a meaningless program to stress that these fake constraints have no actual meaning since the \code{fake} form does no more than evaluating its body and add the resulting expression to the fake constraint store.
+The same program under miniKanren would return \code{((_.0 _.0))}!. And because two Scheme symbols are the same iff they look the same, there is no way to distinguish \code{p} and \code{q} in that case, even from the computer's perspective. The last example below demonstrates fake constraints:
 \begin{lstlisting}
 (run* (q p r)
   (fake `(mother ,q ,p)) (fake `(father ,p ,r))))
 \end{lstlisting}
+
+This is a meaningless program to stress that these fake constraints have no actual meaning. The \code{fake} form does no more than evaluating its body and adding the resulting expression to the fake constraint store.
 
 $\Rightarrow$
 \begin{lstlisting}
@@ -44,9 +46,9 @@ $\Rightarrow$
 
 
 \subsection{Implementation}\label{static_imp}
-This section presents an R6RS compliant implementation of staticKanren. We will highlight only those parts containing interesting differences from the simple miniKanren implementation in \textcite{byrdphd}\footnote{The full implementation is available at \url{https://github.com/lackhoa/staticKanren}.}.
+This section presents an R6RS compliant implementation of staticKanren. The discussion will highlight only those parts containing interesting differences from the simple miniKanren implementation in \textcite{byrdphd}\footnote{The full implementation is available at \url{https://github.com/lackhoa/staticKanren}.}.
 
-The following functions construct and dispatch variables. Variables are vectors of two elements: its name (a symbol) and its birthdate (a number). Additionally, we would like to have a total order on variables defined by \code{var>?}. A variable is greater than another if its birthdate is less (i.e. it was introduced sooner), or if it has the same birthdate and a lexicographically lesser name. We call greater variables \textbf{seniors} and lesser ones \textbf{juniors}.
+The following functions construct and dispatch variables. Variables are vectors of two elements: its name (a symbol) and its birthdate (a number). Additionally, we would like to have a total order on variables defined by \code{var>?}. A variable is greater than another if its birthdate is less (i.e. it was introduced sooner), or if it has the same birthdate and a lexicographically lesser name. Greater variables are called \textbf{seniors} and lesser ones are called \textbf{juniors}.
 \begin{lstlisting}
 (;; name is a symbol, bd is a number
  define var (lambda (name bd) (vector name bd)))
@@ -119,23 +121,23 @@ The first interesting function is \code{unify}, which takes two terms along with
 
 The new clause (to compare variables) adds a little runtime overhead, but that does not matter in this case because this function simply is not used at runtime. There is a method to achieve the same effect without modifying \code{unify} by tweaking the reification process instead, which should eliminate the runtime overhead. However, doing it in this way keeps the substitution list clean and easy to work with. This cleanliness is helpful in section \ref{au} where we have to modify the substitution list after reification.
 
-Figures \ref{miniS} and \ref{staticS} show miniKanren's and staticKanren's representation of the same substitution list, assuming a variable-only substitution. Each vertex corresponds to a variable and each edge from vertex \code{x} to vertex \code{y} corresponds to an association with lhs \code{x} and rhs \code{y}.
+Figures \ref{miniS} and \ref{staticS} show miniKanren's and staticKanren's representation of the same variable-only substitution. Each vertex corresponds to a variable and each edge from vertex \code{x} to vertex \code{y} corresponds to an association with lhs \code{x} and rhs \code{y}.
 
 \begin{figure}[h]
     \centering
     \begin{minipage}{.5\textwidth}
-        \includegraphics[width=.5\textwidth]{figures/coverbg.png}
-        \captionof{figure}{miniKanren's substitution list}
+        \includegraphics[height=.5\textwidth]{figures/miniS.png}
+        \captionof{figure}{miniKanren's substitution}
         \label{miniS}
     \end{minipage}%
     \begin{minipage}{.5\textwidth}
-        \includegraphics[width=.5\textwidth]{figures/coverbg.png}
-        \captionof{figure}{staticKanren's substitution list}
+        \includegraphics[height=.5\textwidth]{figures/staticS.png}
+        \captionof{figure}{staticKanren's substitution}
         \label{staticS}
     \end{minipage}
 \end{figure}
 
-Now we are ready to define user-level functions, starting with the fake constraint.
+Now we are ready to define user-level functions, starting with the fake goal constructor.
 \begin{lstlisting}
 (define fake
   (lambda (expr)
@@ -143,7 +145,7 @@ Now we are ready to define user-level functions, starting with the fake constrai
       (unit (update-F c `(,expr . ,F))))))
 \end{lstlisting}
 
-The job of \code{fresh} is broken down to a conjunction which strings goals together and a \code{letv} which creates variables. \code{letv} extracts the date counter from its input state and assigns it to the new variables; the counter is then incremented before getting fed to the goal in its body.
+The job of \code{fresh} is broken down to a conjunction which strings goals together and a \code{letv} which creates variables. \code{letv} extracts the date counter from its input state and assigns it to the new variables. The counter is then incremented before getting fed to the goal in its body.
 \begin{lstlisting}
 (define-syntax fresh
   (syntax-rules ()
@@ -158,7 +160,7 @@ The job of \code{fresh} is broken down to a conjunction which strings goals toge
          (g (update-C c (+ C 1)))))]))
 \end{lstlisting}
 
-The fascinating part is that reification can be made simpler despite the fact that unknown variables get to keep their names. To obtain the answers, \code{reify} only need to deep walk the query and the constraint stores in \code{c}. A more compact representation of disequality is then obtained by removing constraints containing either no variable or irrelevant variables (i.e. variables absent from both deep walked \code{q*} and deep walked \code{F}).
+The fascinating part is that reification can be made simpler despite the fact that unknown variables get to keep their names. To obtain the answers, \code{reify} only needs to deep walk the query and the constraint stores in \code{c}. A more compact representation of disequality is then obtained by removing constraints containing either no variable or irrelevant variables (i.e. variables absent from both deep walked \code{q*} and deep walked \code{F}).
 \begin{lstlisting}
 (define reify
   ;; This will return a c with clausal S
@@ -214,7 +216,7 @@ For closure, helpers of \code{reify} are given below. It is worth noting that mi
         [atom #f]))))
 \end{lstlisting}
 
-The definition of \code{run*} concludes the core implementation of staticKanren.
+The definition of \code{run*} is as follows:
 \begin{lstlisting}
 (define-syntax run*
   (syntax-rules ()
@@ -229,21 +231,22 @@ The definition of \code{run*} concludes the core implementation of staticKanren.
     (lambdag@ (final-c)
       (unit (reify final-c qs)))))
 \end{lstlisting}
+This concludes the core of staticKanren
 
 \subsection{Returning substitutions in answers}\label{S}
-Let us begin exploring the practical value of staticKanren with a simple problem of returning substitutions instead of walked queries in the answers. We achieve this with the new \code{run*su} form. The answers in the next example would be \code{((#(q 0) #(q 0) #(q 0)) () ())} if we replaced \code{run*su} by \code{run*}.
+Let us begin exploring the practical value of staticKanren with a simple problem of returning substitutions instead of walked queries in the answers. We achieve this with the new \code{run*su} form. The answers in the next example would be \code{((#(p 0) #(p 0) #(p 0)) () ())} if we replaced \code{run*su} by \code{run*}.
 \begin{lstlisting}
 (run*su (q p r) (== q p) (== p r))
 \end{lstlisting}
 $\Rightarrow$ \code{((((#(r 0) #(p 0)) (#(q 0) #(p 0))) () ()))}
 
-We see that the answer looks exactly like the program, which once again highlights the fact that miniKanren states are just accumulations of logical assertions throughout the execution of programs, albeit normalized. By looking at the answers, we can summarize the content of the program that produced them. As a matter of fact, answers may be simpler than programs, as the following case shows.
+We see that the answer looks exactly like the program, which once again highlights the fact that miniKanren states are just accumulations of logical assertions throughout the execution of programs, albeit normalized. By looking at the answers, we can summarize the content of the program that produced them. As a matter of fact, answers may be simpler than programs, as the following case shows:
 \begin{lstlisting}
 (pp (run*su (q p) (== q p) (== p q)))
 \end{lstlisting}
 $\Rightarrow$ \code{((((#(q 0) #(p 0))) () ()))}
 
-Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and it is removed from the final answer. It might look as if a complex inference mechanism is being used, but in fact this feature only requires a simple change to \code{run*}. Unification has already done much of the work building up a clean substitution, we only need to retrieve it by unifying the query with the walked version of itself. Below is \code{run*su}.
+Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and it is removed from the final answer. It might look as if a complex inference mechanism is involved, but in fact this feature only requires a simple change to \code{run*}. Unification has already done much of the work building up a clean substitution, we only need to retrieve it by unifying the query with the walked version of itself. The definition \code{run*su} is given below:
 \begin{lstlisting}
 (define-syntax run*su
   ;; run* with substitutions
@@ -263,15 +266,9 @@ Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and i
         ,(cdr c)))))
 \end{lstlisting}
 
-For example, \code{(run*su (q p r) (== q p) (== `(,q ,p) r))} returns \code{((((#(r 0) (#(p 0) #(p 0))) (#(q 0) #(p 0))) () ()))}. Figure \ref{fig:run*su} illustrates how this answer was achieved.
-\begin{figure}[h]
-    \centering
-    \includegraphics{figures/logo.jpg}
-    \caption{Example of \code{run*su}}
-    \label{fig:run*su}
-\end{figure}
+For example, \code{(run*su (q p r) (== q p) (== `(,q ,p) r))} returns \code{((((#(r 0) (#(p 0) #(p 0))) (#(q 0) #(p 0))) () ()))}. The returned substitution is equal to the result of unifying the query \code{(#(q 0) #(p 0) #(r 0))} with the walked query portion of the answer under \code{run*}, which is \code{(#(p 0) #(p 0) (#(p 0) . #(p 0)))}.
 
-This much of development already lets us to obtain the "negative" side of the \code{lookupt} function defined earlier in section \ref{reif}. Before running it in staticKanren, however, we need to first redefine \code{lookupt} so that the recursive call is fake.
+This much of development already lets us to obtain the "negative" side of the \code{lookupt} function defined earlier in Section \ref{reif}. Before running it in staticKanren, however, we need to first redefine \code{lookupt}, so that the recursive call is fake as follows.
 \begin{lstlisting}
 (define lookupt
   (lambda (x env t)
@@ -308,9 +305,9 @@ This response is akin to the goal:
   (=/= y x)
   ((lookupt x rest 'unbound) #f)])
 \end{lstlisting}
-The second clause is particularly interesting: it states that if the environment is non-empty and the lookup is to fail, then the variable \code{x} must not match the association's lhs and the lookup must also fail for the rest of the environment.
+The second clause is particularly interesting: it states that if the environment is non-empty and the lookup is to fail, the variable \code{x} must not match the association's lhs and the lookup must also fail for the rest of the environment.
 
-\subsection{Obtaining common unification pattern with anti-unification}\label{au}
+\subsection{Obtaining common unification with anti-unification}\label{au}
 There are still cases where rewritten programs do not look at all similar to the original. Take \code{membero} for example:
 \begin{lstlisting}
 (define membero
@@ -324,7 +321,7 @@ There are still cases where rewritten programs do not look at all similar to the
        [else (fake `(membero ,x ,es))]))))
 \end{lstlisting}
 
-Rewritten through \code{run*su}, this gives.
+Rewritten through \code{run*su} gives us the following:
 \begin{lstlisting}
 ((((#(ees 0) (#(x 0) . #(es 1)))) 
   ()
@@ -333,7 +330,7 @@ Rewritten through \code{run*su}, this gives.
   (((#(e 1) #(x 0))))
   ((membero #(x 0) #(es 1)))))
 \end{lstlisting}
-Which is equivalent to this program.
+The answer above is equivalent to this program:
 \begin{lstlisting}
 (define membero
   (lambda (x ees)
@@ -345,7 +342,7 @@ Which is equivalent to this program.
         (=/= e x)
         (membero x es))])))
 \end{lstlisting}
-Human readers would agree that the version above does not look at all natural: it does not show the common structure of \code{ees} in both clauses. To make this notion of commonness more clear, we refer to \textbf{anti-unification}, a dual of unification. Given a collection of terms, anti-unification returns their least general generalization. This process describes quite well humans' ability to recognize pattern over symbolic formulae, which is exactly what we need for this purpose. For example,
+Human readers would agree that the version above does not look at all natural: it does not show the common structure of \code{ees} in both clauses. To make this notion of commonness more clear, we refer to \textbf{anti-unification}, a dual of unification. Given a collection of terms, anti-unification returns their least general generalization. This process describes quite well humans' ability to recognize patterns over symbolic formulae, which is exactly what we need for this purpose. The following is an example of anti-unification:
 \begin{lstlisting}
 (let ([t* '((1 * 2 = 2 + 1)
             (4 * 3 = 3 + 4))])
@@ -355,7 +352,7 @@ $\Rightarrow$ \code{(#(au0 0.5) * #(au1 0.5) = #(au1 0.5) + #(au0 0.5))}
 
 Anti-unification has captured the common pattern from these two formulae. \code{au0} and \code{au1} are normal staticKanren variables introduced in the process, which from now on shall be referred to as \textbf{pattern variables}. All pattern variables have the birthdate \code{0.5}, the reason for which will become clear when the program is complete.
 
-The implementation of \code{anti-unify} is adapted from \textcite{ostvold2004functional}. The most significant difference is that this version also recognizes identical variables as being the same terms and reuse that variable in the pattern. 
+The implementation of \code{anti-unify} is adapted from \textcite{ostvold2004functional}. The most significant difference is that this version also recognizes identical variables as being the same terms and reuses that variable in the pattern. \code{anti-unify} is given below:
 
 \begin{lstlisting}
 (define anti-unify
@@ -392,7 +389,7 @@ The implementation of \code{anti-unify} is adapted from \textcite{ostvold2004fun
      (string-append "au" (number->string n)))))
 \end{lstlisting}
 
-Even though anti-unification is the heart of our solution, there is still a lot of work to do. It is not clear how to convert the obtained pattern into a usable program. We start by making a small step similar to section \ref{S}.
+Even though anti-unification is the heart of our solution, there is still a lot of work to do. It is not clear how to convert the obtained pattern into a usable program. We start with a similar definition to Section \ref{S}:
 \begin{lstlisting}
 (define-syntax run*au
   ;; run* with anti-unification analysis
@@ -405,7 +402,7 @@ Even though anti-unification is the heart of our solution, there is still a lot 
            (au-extract c* qs))))]))
 \end{lstlisting}
 
-The main work is now delegated to \code{au-extract}, which takes the answers and the query as input. First, \code{au-extract} extracts a common pattern \code{au} from the walked query \code{t*}. Second, it unifies the query with the pattern in the empty environment, resulting in the substitution \code{uS}. The next obvious step is to unify \code{au} back into each of the answer term in \code{t*} to obtain the substitutions \code{S*}. Finally, we perform the optional step of cleaning up the substitutions with \code{purify-S} and deep walk the other constraints, obtaining a working program.
+The main work is now delegated to \code{au-extract}, which takes the answers and the query as input. First, \code{au-extract} extracts a common pattern \code{au} from the walked query \code{t*}. Second, it unifies the query with the pattern in the empty environment, resulting in the substitution \code{uS}. The next obvious step is to unify \code{au} back into each of the walked queries in \code{t*} to obtain the substitutions \code{S*}. Finally, we perform the optional step of cleaning up the substitutions with \code{purify-S} and deep walk the other constraints, obtaining a working program. This is shown below:
 \begin{lstlisting}
 (define au-extract
   (lambda (c* qs)
@@ -433,9 +430,9 @@ The main work is now delegated to \code{au-extract}, which takes the answers and
 (define AU-BD (+ init-C 0.5))
 \end{lstlisting}
 
-The only question left is how to clean up the substitutions. We have already done a similar thing during reification with the help of \code{walk*}, but this time things are not so convenient because we also want to retain the intermediate associations given by anti-unification. There is a basic principle that works well: an association is redundant iff its lhs (a variable) was not introduced prior to a certain date. The intuitive reason is that we can just use the rhs in the first place without ever introducing the lhs.
+The only question left is how to clean up the substitutions. We have already done a similar thing during reification with the help of \code{walk*}. However, this time things are not so convenient since we also want to retain the intermediate associations given by anti-unification. There is a basic principle that works well: an association is redundant iff its lhs (a variable) was not introduced prior to a certain date. The intuitive reason is that we can just use the rhs in the first place without ever introducing the lhs.
 
-Conveniently, \code{purify-S} can keep track of already introduced variables using their birthdates. Associations whose lhs was born later than a certain date (called the \textbf{cutoff date}) are filtered out of the substitution list. We need only look at the lhs because it is always the junior variable in the case that both sides are variables.
+Conveniently, \code{purify-S} can keep track of already introduced variables using their birthdates. Associations whose lhs was born later than a certain date (called the \textbf{cutoff date}) are filtered out of the substitution list. We need only look at the lhs because it is always the junior variable in the case that both sides are variables. The definition of \code{purify-S} is as follows:
 \begin{lstlisting}
 (define purify-S
   (lambda (S cutoff)
@@ -446,7 +443,7 @@ Conveniently, \code{purify-S} can keep track of already introduced variables usi
 Looking back, we see that \code{purify-S} is called twice in \code{au-extract} and \code{au-helper}. The first call is to clean up the common substitution involving query variables and pattern variables, in which case the cutoff date only allows query variables (note that \code{init-C} is also the birthdate of all query variables). In the second call (in \code{au-helper}) which involves case-specific substitutions, we also include pattern variables since they have already been introduced. This explains why pattern variables are born on \code{0.5}: they are junior to query variables, but senior to all variables introduced by the "user" (i.e. variables coming from \code{fresh}). Figure \ref{fig:au_S} illustrates the idea.
 \begin{figure}[h]
     \centering
-    \includegraphics{figures/logo.jpg}
+    \includegraphics{figures/au_S.png}
     \caption{The interaction between query, pattern and "user" variables}
     \label{fig:au_S}
 \end{figure}
@@ -478,7 +475,7 @@ This response is akin to the goal:
    [(=/= au0 x)
     ((lookupt x rest t) #t)]))
 \end{lstlisting}
-Anti-unification identifies that across all clauses, the environment is always a non-empty list with the first element being an association. It also correctly handles how each clause has to do afterwards to obtain the original semantics. Especially the third clause is a clever assertion: it says that if the association's lhs (\code{au0}) is different from the variable \code{x} and the lookup is to succeed, then the lookup of \code{x} in the tail of the environment has to succeed.
+Anti-unification identifies that across all clauses, the environment \code{env} is always a non-empty list with the first element being an association. It also correctly handles what each clause has to do afterwards to obtain the original semantics. Especially the third clause is a clever assertion: it says that if the association's lhs (\code{au0}) is different from the variable \code{x} and the lookup is to succeed, the lookup of \code{x} in the tail of the environment has to succeed.
 
 To aid in understanding what the role of \code{purify-S} is in the example above, here is the same answer but with both calls to \code{purify-S} removed:
 \begin{lstlisting}

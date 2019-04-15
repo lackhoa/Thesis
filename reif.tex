@@ -1,6 +1,6 @@
-\section{Relational conditionals with pseudo-functions}\label{reif}
+\section{RELATIONAL CONDITIONALS WITH PSEUDO-FUNCTIONS}\label{reif}
 \subsection{The problem with conde}
-Suppose we need to write a relation called to retrieve a variable's value in an environment, call it \code{lookupo}. The task at first is just a straightforward transformation from the Scheme function \code{lookup}.
+Suppose we need to write a relation called to retrieve a variable's value in an environment, call it \code{lookupo}. The task at first is just a straightforward transformation from the Scheme function \code{lookup} in the following way:
 \begin{lstlisting}
 (define lookup
   ;; (lookup 'x '([x 1] [y 2] [z 3]))
@@ -22,7 +22,7 @@ Suppose we need to write a relation called to retrieve a variable's value in an 
        [(=/= y x) (lookupo x rest t)]))))
 \end{lstlisting}
 
-Later on we might need to actually handle the case where the variable is unbound instead of raising an error or fail. We update both definitions:
+Later on we might need to actually handle the case where the variable is unbound instead of raising an error or fail. We update both definitions as follows:
 \begin{lstlisting}
 (define lookup
   ;; (lookup 'x '([x 1] [y 2]))
@@ -69,7 +69,7 @@ So far so good: \code{lookup} only needs an additional relation argument indicat
       (== #f out)])))
 \end{lstlisting}
 
-Why can we not use \code{else} in the second clause? The reason is that despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, so there can be no default case. As a result, programmers must always be prepared to append extra denials in lower \code{conde} clauses. This issue gets serious when the control flow is more complex, such as \code{case2(o)}:
+Why can we not use \code{else} in the second clause? The reason is that despite the similarity in appearance, \code{conde} does not process its clauses from top to bottom like \code{cond} does, hence there can be no default case. As a result, programmers must always be prepared to append extra denials in lower \code{conde} clauses. This issue gets serious when the control flow is more complex, such as in \code{case2(o)} below:
 
 \begin{lstlisting}
 (define case2
@@ -91,7 +91,7 @@ Why can we not use \code{else} in the second clause? The reason is that despite 
 This time there are three extra denials instead of just the one of \code{case1o}. The example above is still generous, as it is usual for relations to include four or more \code{conde} clauses. The number of extra denials exhibits quadratic growth, introducing opportunities for errors without any significant contribution to the meaning of the program. The next section shows a simple way to deal with this using a technique first implemented in Prolog by \textcite{reif}.
 
 \subsection{Pseudo-function and condo}
-miniKanren code looks primitive because all goals are actions manipulating implicit \textit{states}. For more complex combinations to work, there must be another way for relations to "communicate". \textbf{Pseudo-functions} achieve this communication by signaling their computed results. However, pseudo-functions receive their results as arguments instead of returning them. To make sense of this concept, observe the following transformation (the "t" at the end denotes pseudo-functions, because it is too late to change):
+miniKanren code looks primitive because all goals are actions manipulating implicit \textit{states}. For more complex combinations to work, there must be another way for relations to "communicate". \textbf{Pseudo-functions} achieve this communication by signaling their computed results. However, pseudo-functions receive their results as arguments instead of returning them. To make sense of this concept, the following transformation should be observed (the "t" at the end of names denote pseudo-functions, because it is too late to change):
 \begin{lstlisting}
 ;; From function
 (define bar (lambda (in) 'v))
@@ -103,7 +103,7 @@ miniKanren code looks primitive because all goals are actions manipulating impli
 (define bart (lambda (in) (lambda (out) (== out 'v))))
 \end{lstlisting}
 
-From a low-level point of view, a pseudo-function is a function which takes a single argument and return a goal. The act of \textit{returning} a result is then mimicked by the goal's act of \textit{unifying} that single argument with the result. As an aside, a relation can be made to return whichever of its formal parameters, depending on the circumstance:
+From a low-level point of view, a pseudo-function is a function which takes a single argument and returns a goal. The act of \textit{returning} a result is then mimicked by the goal's act of \textit{unifying} that single argument with the result. As an aside, a relation can be made to return whichever of its formal parameters, depending on the circumstance. Examples of this can be seen below:
 \begin{lstlisting}
 ;; From relation
 (define conso
@@ -132,9 +132,9 @@ From a low-level point of view, a pseudo-function is a function which takes a si
     (lambda (ls)
       (conso a d ls))))
 \end{lstlisting}
-I have never encountered a situation where this is actually useful as there is generally only one parameters deemed "the output". It is worth noting that even though pseudo-functions act like pure functions, they can affect more than just the output. For instance, the goal \code{((cart x) a)} will always instantiate \code{x} to a pair if it is currently unknown.
+I have never encountered a situation where this is actually useful as there is generally only one parameter deemed "the output". It is worth noting that even though pseudo-functions act like pure functions, they can affect more than just the output. For instance, the goal \code{((cart x) a)} will always instantiate \code{x} to a pair, if it is currently unknown.
 
-Getting back to the problem of conditionals, we first define two trivial pseudo-functions \code{truet} and \code{falset} whose results are \code{#t} and \code{#f} respectively.
+Getting back to the problem of conditionals, we first define below two trivial pseudo-functions \code{truet} and \code{falset} whose results are \code{#t} and \code{#f} respectively.
 
 \begin{lstlisting}
 (define truet
@@ -165,7 +165,7 @@ Next, we define a single "primitive" pseudo-function similar to Scheme's \code{e
        [(== #f ?) (=/= x y)]))))
 \end{lstlisting}
 
-Next, we provide ways of creating more complex pseudo-functions from simpler ones, starting with \code{negt} (negation):
+Next, we provide ways of creating more complex pseudo-functions from simpler ones, starting with \code{negt} (negation) below:
 \begin{lstlisting}
 (define negt
   (lambda (g)
@@ -175,7 +175,7 @@ Next, we provide ways of creating more complex pseudo-functions from simpler one
        [(== #f ?) (g #t)]))))
 \end{lstlisting}
 
-From this, \code{=/=t} can be trivially derived:
+From this, \code{=/=t} can be trivially derived as follows:
 \begin{lstlisting}
 (define =/=t
   ;; (run* (x y ?) ((=/=t x y) ?))
@@ -185,7 +185,7 @@ From this, \code{=/=t} can be trivially derived:
     (negt (==t x y))))
 \end{lstlisting}
 
-Next, we define \code{conjt} (conjunction) and \code{disjt} (disjunction) using macro:
+Next, we define \code{conjt} (conjunction) and \code{disjt} (disjunction) using macro in the following ways:
 \begin{lstlisting}
 (define-syntax conjt
   (syntax-rules ()
@@ -208,7 +208,7 @@ Next, we define \code{conjt} (conjunction) and \code{disjt} (disjunction) using 
         [(g1 #f)  ((disjt g2 gs ...) ?)]))]))
 \end{lstlisting}
 
-The next two examples demonstrate conjunction and disjunction:
+The two following examples demonstrate conjunction and disjunction:
 \begin{lstlisting}
 (run* (t x y z)
    ((conjt (==t x y)
@@ -235,7 +235,7 @@ $\Rightarrow$
  ((#f _.0 _.1 _.2) (=/= ((_.0 _.1)) ((_.1 _.2)))))
 \end{lstlisting}
 
-Finally, we can define the goal constructor \code{condo} -- the closest relational counterpart of \code{cond}. Keep in mind that \code{succeed} stands for the "do nothing" goal and \code{fail} stands for the "always fail" goal.
+Finally, we can define the goal constructor \code{condo} -- the closest relational counterpart of \code{cond}. We should keep in mind that \code{succeed} stands for the "do nothing" goal and \code{fail} stands for the "always fail" goal.
 \begin{lstlisting}
 (define-syntax condo
   (syntax-rules (else)
@@ -249,7 +249,7 @@ Finally, we can define the goal constructor \code{condo} -- the closest relation
       [(test #f) (condo c* ...)])]
     [(_) fail]))
 \end{lstlisting}
-\code{condo} is an interesting combinator because it uses two types of objects: pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case; although it can be omitted, in which case the program fails when no clause matches. The example below demonstrates the use of \code{condo}:
+\code{condo} is an interesting combinator, because it uses two types of objects: pseudo-functions in the test positions and normal miniKanren goals in the bodies of each clause. The \code{else} keyword can be used to signify the default case, although it can be omitted, in which case the program fails when no clause matches. The example below demonstrates the use of \code{condo}:
 \begin{lstlisting}
 (run* (x y z)
   (condo
@@ -264,7 +264,7 @@ $\Rightarrow$
  ((_.0 _.1 _.0) (=/= ((_.0 _.1)))))
 \end{lstlisting}
 
-We are now able to replace \code{lookupo} with the pseudo-function \code{lookupt}.
+We are now able to replace \code{lookupo} with the pseudo-function \code{lookupt}, as seen below.
 \begin{lstlisting}
 (define lookupt
   ;; (run* (x t bound?) ((lookupt x '([x 1]) t) bound?))
@@ -282,7 +282,7 @@ We are now able to replace \code{lookupo} with the pseudo-function \code{lookupt
            [else
             ((lookupt x rest t) bound?)]))]))))
 \end{lstlisting}
-Now, the comparison between \code{case2} and \code{case2o} does not look so bad anymore.
+Now, the following comparison between \code{case2} and \code{case2o} does not look so bad anymore:
 \begin{lstlisting}
 (define case2
   (lambda (x y env)
@@ -300,7 +300,7 @@ Now, the comparison between \code{case2} and \code{case2o} does not look so bad 
        [else (== #f out)]))))
 \end{lstlisting}
 
-While some readers may already be in the middle of converting all of their relations to pseudo-functions, there are still some issues to be discussed. \code{condo} works it magic by hiding the control flow. And despite the enhanced readability, there is no simple way to see what is actually going on behind the layer of abstraction. As a result, it is easy to accidentally change the behavior of programs. Take for example this goal using \code{condo}:
+While some readers may already be in the middle of converting all of their relations to pseudo-functions, there are still some issues to be discussed. \code{condo} works it magic by hiding the control flow. And despite the enhanced readability, there is no simple way to see what is actually going on behind the layer of abstraction. As a result, it is easy to accidentally change the behavior of programs. Take for example the following goal using \code{condo}:
 \begin{lstlisting}
 (fresh (x y)
   (condo
@@ -308,7 +308,7 @@ While some readers may already be in the middle of converting all of their relat
    [(==t 'b x) (== 2 y)]
    [(==t 'c x) (== 3 y)]))
 \end{lstlisting}
-It is not clear that there is an issue with this code, because it looks so much like normal Scheme. The issue only shows itself when we expand the \code{condo}:
+It is not clear that there is an issue with this code, because it looks so much like normal Scheme. The issue only shows itself when we expand the \code{condo} as follows:
 \begin{lstlisting}
 (fresh (x y)
   (conde
@@ -316,4 +316,4 @@ It is not clear that there is an issue with this code, because it looks so much 
    [(=/= 'a x) (== 'b x) (== 2 y)]
    [(=/= 'a x) (=/= 'b x) (== 'c x) (== 3 y)]))
 \end{lstlisting}
-Clearly, the additional denials in these \code{conde} clauses are redundant since they are already mutually exclusive. Moreover, switching from \code{conde} to \code{condo} always means changing the way miniKanren's search work, which might be devastating to some existing programs. Reality has shown that serious miniKanren users who are conscious about their programs' behavior cannot afford \code{condo}, so we are once again stuck with lengthy, buggy \code{conde} clauses whose meaning cannot be easily grasped. The next section addresses this issue by offering a way to verify the correctness of existing programs with \textbf{staticKanren}.
+Clearly, the additional denials in these \code{conde} clauses are redundant since they are already mutually exclusive. Moreover, switching from \code{conde} to \code{condo} always means changing the way miniKanren's search work, which might be devastating to some existing programs. As a result, we are once again stuck with lengthy, buggy \code{conde} clauses whose meaning cannot be easily grasped. The next section addresses this issue by offering a way to verify the correctness of existing programs with \textbf{staticKanren}.
