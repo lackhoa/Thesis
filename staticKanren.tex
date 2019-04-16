@@ -66,7 +66,7 @@ The following functions construct and dispatch variables. Variables are vectors 
           (and (= bd1 bd2) (string<? n1 n2))))))
 \end{lstlisting}
 
-Next we have definitions concerning states. A state is a 4-tuple consisting of a substitution \code{S}, a date counter \code{C}, a disequality store \code{D} and a fake constraint store \code{F}. The counter starts from 0 and only goes upwards. Additionally, \code{letg@} is a special form to dispatch on states.
+Next we have definitions concerning states. A state is a 4-tuple consisting of a substitution \code{S}, a date counter \code{C}, a disequality store \code{D} and a fake constraint store \code{F}. The counter starts from 0 and only goes upwards. \code{letg@} is a special form to extract constraints from states.
 \begin{lstlisting}
 (define-syntax letg@
   ;; let with state inspection
@@ -121,7 +121,7 @@ The first interesting function is \code{unify}, which takes two terms along with
 
 The new clause (to compare variables) adds a little runtime overhead, but that does not matter in this case because this function simply is not used at runtime. There is a method to achieve the same effect without modifying \code{unify} by tweaking the reification process instead, which should eliminate the runtime overhead. However, doing it in this way keeps the substitution list clean and easy to work with. This cleanliness is helpful in section \ref{au} where we have to modify the substitution list after reification.
 
-Figures \ref{miniS} and \ref{staticS} show miniKanren's and staticKanren's representation of the same variable-only substitution. Each vertex corresponds to a variable and each edge from vertex \code{x} to vertex \code{y} corresponds to an association with lhs \code{x} and rhs \code{y}.
+Figures \ref{miniS} and \ref{staticS} show both miniKanren's and staticKanren's representations of the same variable-only substitution. Each vertex corresponds to a variable and each edge from vertex \code{x} to vertex \code{y} corresponds to an association with lhs \code{x} and rhs \code{y}.
 
 \begin{figure}[h]
     \centering
@@ -137,7 +137,7 @@ Figures \ref{miniS} and \ref{staticS} show miniKanren's and staticKanren's repre
     \end{minipage}
 \end{figure}
 
-Now we are ready to define user-level functions, starting with the fake goal constructor.
+Now we are ready to define user-level functions, starting with the fake goal constructor. It should be remembered that \code{lambdag@} is a \code{lambda} form with the ability to extract various constraints from its argument, which is always a state.
 \begin{lstlisting}
 (define fake
   (lambda (expr)
@@ -145,7 +145,7 @@ Now we are ready to define user-level functions, starting with the fake goal con
       (unit (update-F c `(,expr . ,F))))))
 \end{lstlisting}
 
-The job of \code{fresh} is broken down to a conjunction which strings goals together and a \code{letv} which creates variables. \code{letv} extracts the date counter from its input state and assigns it to the new variables. The counter is then incremented before getting fed to the goal in its body.
+The job of \code{fresh} is broken down to a conjunction (\code{conj}) which strings goals together and a \code{letv} which creates variables. \code{letv} extracts the date counter from its input state and assigns it to the new variables. The counter is then incremented before getting fed to the goal in its body.
 \begin{lstlisting}
 (define-syntax fresh
   (syntax-rules ()
@@ -160,7 +160,7 @@ The job of \code{fresh} is broken down to a conjunction which strings goals toge
          (g (update-C c (+ C 1)))))]))
 \end{lstlisting}
 
-The fascinating part is that reification can be made simpler despite the fact that unknown variables get to keep their names. To obtain the answers, \code{reify} only needs to deep walk the query and the constraint stores in \code{c}. A more compact representation of disequality is then obtained by removing constraints containing either no variable or irrelevant variables (i.e. variables absent from both deep walked \code{q*} and deep walked \code{F}).
+Other goal constructors do not need to be modified. Surprisingly, reification can be made simpler despite the fact that unknown variables get to keep their names. To obtain the answers, \code{reify} only needs to deep walk the query and the constraint stores in \code{c}. A more compact representation of disequality is then obtained by removing constraints containing either no variable or irrelevant variables (i.e. variables absent from both deep walked \code{q*} and deep walked \code{F}).
 \begin{lstlisting}
 (define reify
   ;; This will return a c with clausal S
@@ -174,7 +174,7 @@ The fascinating part is that reification can be made simpler despite the fact th
             `(,t ,D ,F)))))))
 \end{lstlisting}
 
-For closure, helpers of \code{reify} are given below. It is worth noting that miniKanren data are also miniKanren terms, which explains why the code can be so short.
+Some helpers of \code{reify} are given below. It is worth noting that miniKanren data are also miniKanren terms, which explains why the code can be so short. The function performing subsumption check of disequality stores, \code{rem-subsumed}, remains unchanged.
 \begin{lstlisting}
 (define-syntax case-term
   ;; A type dispatcher for mk terms
@@ -183,15 +183,9 @@ For closure, helpers of \code{reify} are given below. It is worth noting that mi
      (let ([term e])
        (cond
         [(var? term) (let ([v term]) e1)]
-        [(pair? term) (let ([a (car term)] [d (cdr term)]) e2)]
+        [(pair? term)
+          (let ([a (car term)] [d (cdr term)]) e2)]
         [else (let ([atom term]) e3)]))]))
-
-(define get-vars
-  (lambda (t)
-    (case-term t
-      [v `(,v)]
-      [(a d) (append (get-vars a) (get-vars d))]
-      [a '()])))
 
 (define purify-D
   (lambda (D R)
@@ -199,13 +193,6 @@ For closure, helpers of \code{reify} are given below. It is worth noting that mi
               (not (or (constant? d)
                        (has-iv? d R))))
             D)))
-
-(define constant?
-  (lambda (t)
-    (case-term t
-      [v #f]
-      [(a d) (and (constant? a) (constant? d))]
-      [atom #t])))
 
 (define has-iv?
   (lambda (t R)
@@ -216,7 +203,7 @@ For closure, helpers of \code{reify} are given below. It is worth noting that mi
         [atom #f]))))
 \end{lstlisting}
 
-The definition of \code{run*} is as follows:
+Finally, the definition of \code{run*} is as follows:
 \begin{lstlisting}
 (define-syntax run*
   (syntax-rules ()
@@ -231,10 +218,10 @@ The definition of \code{run*} is as follows:
     (lambdag@ (final-c)
       (unit (reify final-c qs)))))
 \end{lstlisting}
-This concludes the core of staticKanren
+This concludes the core implementation of staticKanren.
 
 \subsection{Returning substitutions in answers}\label{S}
-Let us begin exploring the practical value of staticKanren with a simple problem of returning substitutions instead of walked queries in the answers. We achieve this with the new \code{run*su} form. The answers in the next example would be \code{((#(p 0) #(p 0) #(p 0)) () ())} if we replaced \code{run*su} by \code{run*}.
+Let us begin exploring the practical value of staticKanren with a simple improvement: returning substitutions instead of walked queries in the answers. We achieve this with the new \code{run*su} form. For instance, the answers in the next call would be \code{((#(p 0) #(p 0) #(p 0)) () ())} if we replaced \code{run*su} by \code{run*}.
 \begin{lstlisting}
 (run*su (q p r) (== q p) (== p r))
 \end{lstlisting}
@@ -246,7 +233,7 @@ We see that the answer looks exactly like the program, which once again highligh
 \end{lstlisting}
 $\Rightarrow$ \code{((((#(q 0) #(p 0))) () ()))}
 
-Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and it is removed from the final answer. It might look as if a complex inference mechanism is involved, but in fact this feature only requires a simple change to \code{run*}. Unification has already done much of the work building up a clean substitution, we only need to retrieve it by unifying the query with the walked version of itself. The definition \code{run*su} is given below:
+Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and it is removed from the final answer. It might look as if a complex inference mechanism is involved, but in fact this feature only requires a simple addition to \code{run*}. We can retrieve a substitution simply by unifying the query with the walked version of itself, which is what would be returned by \code{run*}. The definition \code{run*su} is given below:
 \begin{lstlisting}
 (define-syntax run*su
   ;; run* with substitutions
@@ -265,8 +252,6 @@ Since \code{==} is commutative, the assertion \code{(== p q)} is redundant and i
         .
         ,(cdr c)))))
 \end{lstlisting}
-
-For example, \code{(run*su (q p r) (== q p) (== `(,q ,p) r))} returns \code{((((#(r 0) (#(p 0) #(p 0))) (#(q 0) #(p 0))) () ()))}. The returned substitution is equal to the result of unifying the query \code{(#(q 0) #(p 0) #(r 0))} with the walked query portion of the answer under \code{run*}, which is \code{(#(p 0) #(p 0) (#(p 0) . #(p 0)))}.
 
 This much of development already lets us to obtain the "negative" side of the \code{lookupt} function defined earlier in Section \ref{reif}. Before running it in staticKanren, however, we need to first redefine \code{lookupt}, so that the recursive call is fake as follows.
 \begin{lstlisting}
@@ -312,7 +297,7 @@ There are still cases where rewritten programs do not look at all similar to the
 \begin{lstlisting}
 (define membero
   ;; (run* (x) (membero x '(a b c)))
-  ;; (in miniKanren) => (a b c)
+  ;; (without fake goal) => (a b c)
   (lambda (x ees)
     (fresh (e es)
       (== ees `(,e . ,es))
@@ -321,7 +306,7 @@ There are still cases where rewritten programs do not look at all similar to the
        [else (fake `(membero ,x ,es))]))))
 \end{lstlisting}
 
-Rewritten through \code{run*su} gives us the following:
+Rewriting through \code{run*su} gives us the following:
 \begin{lstlisting}
 ((((#(ees 0) (#(x 0) . #(es 1)))) 
   ()
@@ -342,7 +327,7 @@ The answer above is equivalent to this program:
         (=/= e x)
         (membero x es))])))
 \end{lstlisting}
-Human readers would agree that the version above does not look at all natural: it does not show the common structure of \code{ees} in both clauses. To make this notion of commonness more clear, we refer to \textbf{anti-unification}, a dual of unification. Given a collection of terms, anti-unification returns their least general generalization. This process describes quite well humans' ability to recognize patterns over symbolic formulae, which is exactly what we need for this purpose. The following is an example of anti-unification:
+Human readers would agree that the version above does not look at all natural: it does not show the common structure of \code{ees} in both clauses. To make this notion of commonness clear, we introduce \textbf{anti-unification}, a dual of unification. Given a collection of terms, anti-unification returns their least general generalization. This process describes quite well humans' ability to recognize patterns over symbolic formulae, which is exactly what we need for this purpose. The following is an example of anti-unification:
 \begin{lstlisting}
 (let ([t* '((1 * 2 = 2 + 1)
             (4 * 3 = 3 + 4))])
@@ -382,6 +367,14 @@ The implementation of \code{anti-unify} is adapted from \textcite{ostvold2004fun
       res)))
 
 (define eqp? (lambda (u) (lambda (v) (eq? u v))))
+
+(define teq?
+  ;; Compares two mk terms
+  (lambda (t1 t2)
+    (or (eq? t1 t2)
+        (and (pair? t1) (pair? t2)
+             (teq? (car t1) (car t2))
+             (teq? (cdr t1) (cdr t2))))))
 
 (define au-name
   (lambda (n)

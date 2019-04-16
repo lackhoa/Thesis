@@ -300,7 +300,7 @@ Now, the following comparison between \code{case2} and \code{case2o} does not lo
        [else (== #f out)]))))
 \end{lstlisting}
 
-While some readers may already be in the middle of converting all of their relations to pseudo-functions, there are still some issues to be discussed. \code{condo} works it magic by hiding the control flow. And despite the enhanced readability, there is no simple way to see what is actually going on behind the layer of abstraction. As a result, it is easy to accidentally change the behavior of programs. Take for example the following goal using \code{condo}:
+Before converting all of your relations to pseudo-functions, there are still some issues to discuss. \code{condo} works it magic by hiding the control flow. And despite the enhanced readability that this technique brings, there is no simple way to see what is actually going on behind the layer of abstraction. As a result, it is easy to accidentally change the behavior of programs. Take for example the following goal using \code{condo}:
 \begin{lstlisting}
 (fresh (x y)
   (condo
